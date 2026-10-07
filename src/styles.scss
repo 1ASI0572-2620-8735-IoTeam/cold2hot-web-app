@@ -1,1 +1,204 @@
-/* You can add global styles to this file, and also import other style files */
+/* ==========================================================================
+   Cold2Hot Design System - Tokens visuales extraídos del prototipo Figma
+   ========================================================================== */
+
+:root {
+  /* Paleta cromática principal */
+  --hot: #FF6B3D;
+  --hot-strong: #E55225;
+  --hot-bg: rgba(255, 107, 61, 0.12);
+
+  --cold: #1E88E5;
+  --cold-strong: #0D47A1;
+  --cold-bg: rgba(30, 136, 229, 0.12);
+
+  --ok: #10B981;
+  --ok-strong: #047857;
+  --ok-bg: rgba(16, 185, 129, 0.12);
+
+  --warn: #F59E0B;
+  --warn-strong: #D97706;
+  --warn-bg: rgba(245, 158, 11, 0.12);
+
+  --danger: #EF4444;
+  --danger-strong: #B91C1C;
+  --danger-bg: rgba(239, 68, 68, 0.12);
+
+  --ink: #0E1726;
+  --ink-2: #243044;
+  --muted: #64748B;
+  --line: #E3E8EF;
+  --bg-alt: #EEF1F5;
+  --bg: #F8FAFC;
+  --white: #FFFFFF;
+  --sidebar-bg: #0E1726;
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-active: rgba(255, 107, 61, 0.15);
+
+  /* Tipografía */
+  --font-display: 'Space Grotesk', -apple-system, sans-serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+
+  /* Formas y bordes */
+  --radius-pill: 999px;
+  --radius-card: 16px;
+  --radius-input: 10px;
+  --radius-sm: 8px;
+
+  /* Sombras */
+  --shadow-card: 0 8px 24px -10px rgba(14, 23, 38, 0.14);
+  --shadow-sm: 0 2px 8px rgba(14, 23, 38, 0.06);
+}
+
+/* Reset y base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg);
+  color: var(--ink);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+}
+
+/* Enfoque accesible a11y */
+:focus-visible {
+  outline: 2px solid var(--hot);
+  outline-offset: 2px;
+}
+
+/* Utilidades de botones basados en Figma (Píldora con altura 44-48px) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 24px;
+  height: 46px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-decoration: none;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  background-color: var(--hot);
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(255, 107, 61, 0.25);
+
+  &:hover:not(:disabled) {
+    background-color: var(--hot-strong);
+    transform: translateY(-1px);
+  }
+}
+
+.btn-secondary {
+  background-color: var(--white);
+  color: var(--ink);
+  border-color: var(--line);
+
+  &:hover:not(:disabled) {
+    background-color: var(--bg-alt);
+    border-color: #cbd5e1;
+  }
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+
+  &:hover:not(:disabled) {
+    color: var(--ink);
+    background-color: var(--bg-alt);
+  }
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: var(--white);
+
+  &:hover:not(:disabled) {
+    background-color: var(--danger-strong);
+  }
+}
+
+/* Chips de estado accesibles (Color + Ícono + Texto) */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+
+  .chip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  &.chip-hot {
+    background-color: var(--hot-bg);
+    color: var(--hot-strong);
+    .chip-dot { background-color: var(--hot); }
+  }
+
+  &.chip-cold {
+    background-color: var(--cold-bg);
+    color: var(--cold-strong);
+    .chip-dot { background-color: var(--cold); }
+  }
+
+  &.chip-ok {
+    background-color: var(--ok-bg);
+    color: var(--ok-strong);
+    .chip-dot { background-color: var(--ok); }
+  }
+
+  &.chip-warn {
+    background-color: var(--warn-bg);
+    color: var(--warn-strong);
+    .chip-dot { background-color: var(--warn); }
+  }
+
+  &.chip-danger {
+    background-color: var(--danger-bg);
+    color: var(--danger-strong);
+    .chip-dot { background-color: var(--danger); }
+  }
+
+  &.chip-neutral {
+    background-color: var(--bg-alt);
+    color: var(--ink-2);
+    .chip-dot { background-color: var(--muted); }
+  }
+}
+
+/* Tarjeta estándar */
+.card {
+  background-color: var(--white);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--line);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
