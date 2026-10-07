@@ -121,6 +121,16 @@ import { TelemetryService } from '../core/services/telemetry.service';
               </button>
             </div>
 
+            <!-- Enlace al Sitio Comercial (Landing Page) -->
+            <a
+              [href]="landingPageUrl"
+              target="_blank"
+              class="landing-link-btn"
+              title="Ver sitio web comercial"
+            >
+              🌐 Sitio Web
+            </a>
+
             <!-- Perfil del Administrador -->
             <div class="user-profile">
               <div class="user-avatar">AD</div>
@@ -427,6 +437,24 @@ import { TelemetryService } from '../core/services/telemetry.service';
       color: var(--muted);
     }
 
+    .landing-link-btn {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--line);
+      background-color: var(--white);
+      transition: all 0.2s ease;
+
+      &:hover {
+        color: var(--ink);
+        background-color: var(--bg-alt);
+        border-color: #CBD5E1;
+      }
+    }
+
     .logout-icon-btn {
       width: 36px;
       height: 36px;
@@ -462,6 +490,14 @@ export class MainLayoutComponent {
   currentUser = this.authService.currentUser;
   currentLang = this.translationService.currentLang;
   criticalAlerts = this.telemetryService.criticalAlertsCount;
+
+  get landingPageUrl(): string {
+    if (typeof window !== 'undefined') {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      return isLocal ? 'http://localhost:8000' : 'https://1asi0572-2620-8735-ioteam.github.io/cold2hot-landing-page/';
+    }
+    return 'https://1asi0572-2620-8735-ioteam.github.io/cold2hot-landing-page/';
+  }
 
   t(key: string): string {
     return this.translationService.translate(key);

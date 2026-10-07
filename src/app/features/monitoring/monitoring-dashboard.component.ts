@@ -304,6 +304,16 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
                 </div>
               </div>
             </div>
+
+            <!-- Botón de Exportar Reporte de Auditoría -->
+            <button
+              type="button"
+              class="btn btn-primary"
+              style="width: 100%; margin-top: 10px;"
+              (click)="exportAuditReport(selectedShipment)"
+            >
+              📄 Descargar Reporte de Custodia
+            </button>
           </div>
         </aside>
       </div>
@@ -855,5 +865,33 @@ export class MonitoringDashboardComponent {
       const y = 140 - normalized * 110;
       return { x, y };
     });
+  }
+
+  exportAuditReport(s: Shipment) {
+    const reportData = `======================================================
+REPORTE DE CUSTODIA TÉRMICA Y AUDITORÍA - COLD2HOT IOT
+======================================================
+ID del Pedido: ${s.id}
+Dirección de Entrega: ${s.customerAddress}
+Caja SmartBox: ${s.smartBoxId}
+Operador Asignado: ${s.operatorName}
+Modo Térmico: ${s.thermalMode} (Rango admisible: ${s.targetMinTemp}°C - ${s.targetMaxTemp}°C)
+Temperatura Final Registrada: ${s.currentTemp}°C
+Estado de Custodia: ${s.thermalStatus === 'OPTIMAL' ? 'INTEGRIDAD VERIFICADA' : 'DESVÍO TÉRMICO DETECTADO'}
+Código OTP Utilizado: ${s.otpCode}
+Fecha de Emisión: ${new Date().toLocaleString()}
+
+HISTORIAL DE LECTURAS DS18B20 EN RUTA:
+${s.history.map(h => `[${h.timestamp}] ${h.temperature}°C (Transmitido vía Edge Gateway)`).join('\n')}
+======================================================
+Certificado digitalmente por Cold2Hot Platform.
+`;
+    const blob = new Blob([reportData], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Reporte-Custodia-${s.id.replace('#', '')}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 }
