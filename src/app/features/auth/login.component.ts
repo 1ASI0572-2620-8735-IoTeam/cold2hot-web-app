@@ -1,3 +1,4 @@
+import { IconComponent } from '../../shared/icon.component';
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,37 +8,41 @@ import { TranslationService } from '../../core/services/translation.service';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="login-wrapper">
       <!-- Columna Izquierda: Branding y propuesta de valor (Figma W01) -->
       <div class="login-brand-panel">
         <div class="brand-header">
           <div class="logo-box">
-            <img class="brand-logo" src="brand/logo-full.png" alt="Cold2Hot" />
+            <img class="brand-icon" src="brand/icon.png" alt="" width="44" height="44" />
+            <span class="brand-word"><span class="w-cold">Cold</span><span class="w-two">2</span><span class="w-hot">Hot</span></span>
           </div>
           <div class="brand-badge">IoT Platform</div>
         </div>
 
         <div class="brand-content">
           <h1 class="brand-hero-title">
-            Custodia térmica inteligente en cada kilómetro.
+            Custodia térmica inteligente en <span class="grad">cada kilómetro.</span>
           </h1>
           <p class="brand-hero-desc">
             {{ t('login_tagline') }}
           </p>
 
+          <!-- Ilustración opcional: se muestra solo si existe public/brand/login-hero.png -->
+          <img class="hero-illustration" src="brand/login-hero.png" alt="" (error)="$any($event.target).remove()" />
+
           <div class="features-list">
             <div class="feature-item">
-              <span class="feature-check">✓</span>
+              <span class="feature-check fc-1"><app-icon name="thermometer" [size]="18" /></span>
               <span>{{ t('login_feature_1') }}</span>
             </div>
             <div class="feature-item">
-              <span class="feature-check">✓</span>
+              <span class="feature-check fc-2"><app-icon name="lock" [size]="18" /></span>
               <span>{{ t('login_feature_2') }}</span>
             </div>
             <div class="feature-item">
-              <span class="feature-check">✓</span>
+              <span class="feature-check fc-3"><app-icon name="shield" [size]="18" /></span>
               <span>{{ t('login_feature_3') }}</span>
             </div>
           </div>
@@ -373,6 +378,43 @@ import { TranslationService } from '../../core/services/translation.service';
     .btn-demo {
       width: 100%;
     }
+
+    /* ---- Rediseño claro (referencia visual + paleta del logo) ---- */
+    .login-brand-panel {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(160deg, #EAF8FF 0%, #FFFFFF 55%, #FFF3EC 100%) !important;
+      color: var(--ink) !important;
+      border-right: 1px solid var(--line);
+    }
+    .login-brand-panel::before,
+    .login-brand-panel::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(2px);
+      pointer-events: none;
+    }
+    .login-brand-panel::before { width: 360px; height: 360px; right: -120px; top: -100px; background: radial-gradient(circle, rgba(56,189,248,.22), transparent 70%); }
+    .login-brand-panel::after { width: 420px; height: 420px; left: -160px; bottom: -180px; background: radial-gradient(circle, rgba(253,87,1,.16), transparent 70%); }
+    .login-brand-panel > * { position: relative; z-index: 1; }
+    .logo-box { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 44px; height: 44px; object-fit: contain; }
+    .brand-word { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+    .w-two { color: var(--cold-strong); }
+    .w-hot { color: var(--hot); }
+    .brand-badge { background: var(--white) !important; color: var(--cold-strong) !important; border: 1px solid rgba(56,189,248,.35); }
+    .brand-hero-title { color: var(--ink) !important; font-weight: 700; letter-spacing: -0.03em; }
+    .grad { background: linear-gradient(90deg, var(--cold-strong), var(--hot)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .brand-hero-desc { color: var(--muted) !important; }
+    .feature-item { color: var(--ink-2) !important; font-weight: 500; }
+    .feature-check { width: 36px !important; height: 36px !important; border-radius: 12px !important; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+    .fc-1 { background: var(--hot-bg) !important; color: var(--hot) !important; }
+    .fc-2 { background: var(--cold-bg) !important; color: var(--cold-strong) !important; }
+    .fc-3 { background: var(--ok-bg) !important; color: var(--ok-strong) !important; }
+    .brand-footer { color: var(--muted) !important; }
+    .login-form-panel { background: var(--white); }
+    .hero-illustration { display: block; width: min(380px, 80%); height: auto; margin: 8px 0 4px; }
   `]
 })
 export class LoginComponent {

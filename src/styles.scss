@@ -4,13 +4,13 @@
 
 :root {
   /* Paleta cromática principal */
-  --hot: #FF6B3D;
-  --hot-strong: #E55225;
-  --hot-bg: rgba(255, 107, 61, 0.12);
+  --hot: #FD5701;
+  --hot-strong: #E04A00;
+  --hot-bg: rgba(253, 87, 1, 0.10);
 
-  --cold: #1E88E5;
-  --cold-strong: #0D47A1;
-  --cold-bg: rgba(30, 136, 229, 0.12);
+  --cold: #38BDF8;
+  --cold-strong: #0284C7;
+  --cold-bg: rgba(56, 189, 248, 0.14);
 
   --ok: #10B981;
   --ok-strong: #047857;
@@ -27,27 +27,27 @@
   --ink: #0E1726;
   --ink-2: #243044;
   --muted: #64748B;
-  --line: #E3E8EF;
-  --bg-alt: #EEF1F5;
-  --bg: #F8FAFC;
+  --line: #E8ECF2;
+  --bg-alt: #F0F3F7;
+  --bg: #F5F7FA;
   --white: #FFFFFF;
   --sidebar-bg: #0E1726;
   --sidebar-hover: rgba(255, 255, 255, 0.08);
   --sidebar-active: rgba(255, 107, 61, 0.15);
 
   /* Tipografía */
-  --font-display: 'Space Grotesk', -apple-system, sans-serif;
-  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-display: 'Poppins', -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Poppins', -apple-system, 'Segoe UI', sans-serif;
 
   /* Formas y bordes */
   --radius-pill: 999px;
-  --radius-card: 16px;
+  --radius-card: 20px;
   --radius-input: 10px;
   --radius-sm: 8px;
 
   /* Sombras */
-  --shadow-card: 0 8px 24px -10px rgba(14, 23, 38, 0.14);
-  --shadow-sm: 0 2px 8px rgba(14, 23, 38, 0.06);
+  --shadow-card: 0 16px 40px -18px rgba(14, 23, 38, 0.18);
+  --shadow-sm: 0 1px 2px rgba(14, 23, 38, 0.04), 0 4px 16px -6px rgba(14, 23, 38, 0.06);
 }
 
 /* Reset y base */
@@ -102,7 +102,7 @@ h1, h2, h3, .font-display {
 .btn-primary {
   background-color: var(--hot);
   color: var(--white);
-  box-shadow: 0 4px 12px rgba(255, 107, 61, 0.25);
+  box-shadow: 0 8px 20px -6px rgba(253, 87, 1, 0.45);
 
   &:hover:not(:disabled) {
     background-color: var(--hot-strong);
@@ -198,7 +198,7 @@ h1, h2, h3, .font-display {
 .card {
   background-color: var(--white);
   border-radius: var(--radius-card);
-  border: 1px solid var(--line);
+  border: 1px solid rgba(232, 236, 242, 0.7);
   padding: 24px;
   box-shadow: var(--shadow-sm);
 }
@@ -263,3 +263,7 @@ tbody tr {
     scroll-behavior: auto !important;
   }
 }
+
+/* Tipografía estilo referencia: títulos geométricos y cifras destacadas */
+h1, h2, h3 { letter-spacing: -0.02em; }
+body { font-size: 14px; }

@@ -1,3 +1,4 @@
+import { IconComponent } from '../../shared/icon.component';
 import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +10,7 @@ import { ThermalMode } from '../../core/models/shipment.model';
 @Component({
   selector: 'app-new-shipment-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="modal-backdrop" (click)="close()">
       <div class="modal-card" (click)="$event.stopPropagation()">
@@ -21,7 +22,7 @@ import { ThermalMode } from '../../core/models/shipment.model';
               <h2 class="modal-title">{{ t('modal_title') }}</h2>
               <p class="modal-subtitle">Asigna una SmartBox con control térmico garantizado</p>
             </div>
-            <button class="close-x-btn" (click)="close()">✕</button>
+            <button class="close-x-btn" (click)="close()" aria-label="Cerrar"><app-icon name="x" [size]="18" /></button>
           </div>
 
           <form (ngSubmit)="onSubmit()" class="modal-form">
@@ -71,7 +72,7 @@ import { ThermalMode } from '../../core/models/shipment.model';
                   [class.selected]="selectedMode === 'COLD'"
                   (click)="selectMode('COLD')"
                 >
-                  <div class="profile-icon cold-icon">❄️</div>
+                  <div class="profile-icon cold-icon"><app-icon name="snow" [size]="26" /></div>
                   <div class="profile-info">
                     <div class="profile-name">Modo Frío</div>
                     <div class="profile-desc">{{ t('modal_cold_desc') }}</div>
@@ -84,7 +85,7 @@ import { ThermalMode } from '../../core/models/shipment.model';
                   [class.selected]="selectedMode === 'HOT'"
                   (click)="selectMode('HOT')"
                 >
-                  <div class="profile-icon hot-icon">🔥</div>
+                  <div class="profile-icon hot-icon"><app-icon name="flame" [size]="26" /></div>
                   <div class="profile-info">
                     <div class="profile-name">Modo Caliente</div>
                     <div class="profile-desc">{{ t('modal_hot_desc') }}</div>
@@ -135,7 +136,7 @@ import { ThermalMode } from '../../core/models/shipment.model';
         <!-- PANTALLA 2: OTP GENERADO W07 -->
         <div *ngIf="createdOtp" class="otp-view">
           <div class="otp-icon-header">
-            <span class="success-check">✓</span>
+            <span class="success-check"><app-icon name="check" [size]="26" [stroke]="2.4" /></span>
           </div>
 
           <h2 class="otp-dialog-title">{{ t('otp_dialog_title') }}</h2>

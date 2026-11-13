@@ -71,6 +71,8 @@ export class TelemetryService {
   readonly shipments = this.shipmentsSignal.asReadonly();
   readonly smartBoxes = this.smartBoxesSignal.asReadonly();
   readonly alerts = this.alertsSignal.asReadonly();
+  /** Texto de la búsqueda global de la barra superior (filtra envíos). */
+  readonly searchTerm = signal('');
   /** Mensaje de error de conexión con el backend (null si todo está bien). */
   readonly connectionError = this.errorSignal.asReadonly();
 

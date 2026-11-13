@@ -1,4 +1,5 @@
 import { RevealDirective } from '../../shared/reveal.directive';
+import { IconComponent } from '../../shared/icon.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuditReport } from '../../core/models/shipment.model';
@@ -7,7 +8,7 @@ import { TelemetryService } from '../../core/services/telemetry.service';
 @Component({
   selector: 'app-history',
   standalone: true,
-  imports: [CommonModule, RevealDirective],
+  imports: [CommonModule, RevealDirective, IconComponent],
   template: `
     <div class="hist-container">
       <div class="hist-header">
@@ -43,7 +44,7 @@ import { TelemetryService } from '../../core/services/telemetry.service';
                 </span>
               </td>
               <td>{{ r.status === 'DELIVERED' ? 'Entregado' : r.status === 'IN_TRANSIT' ? 'En ruta' : 'Cancelado' }}</td>
-              <td class="right"><button class="btn btn-ghost" (click)="export(r)">📄 Exportar</button></td>
+              <td class="right"><button class="btn btn-ghost" (click)="export(r)"><app-icon name="download" [size]="16" /> Exportar</button></td>
             </tr>
           </tbody>
         </table>

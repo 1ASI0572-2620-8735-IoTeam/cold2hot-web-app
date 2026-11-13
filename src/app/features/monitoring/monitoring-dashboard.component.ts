@@ -1,4 +1,5 @@
 import { RevealDirective } from '../../shared/reveal.directive';
+import { IconComponent } from '../../shared/icon.component';
 import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslationService } from '../../core/services/translation.service';
@@ -9,7 +10,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
 @Component({
   selector: 'app-monitoring-dashboard',
   standalone: true,
-  imports: [CommonModule, NewShipmentModalComponent, RevealDirective],
+  imports: [CommonModule, NewShipmentModalComponent, RevealDirective, IconComponent],
   template: `
     <div class="monitoring-container">
       
@@ -21,7 +22,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
             <span class="kpi-label">{{ t('kpi_total_active') }}</span>
             <span class="kpi-value">{{ totalActive() }}</span>
           </div>
-          <div class="kpi-icon-box bg-blue">📦</div>
+          <div class="kpi-icon-box tone-cold"><span class="blob"></span><app-icon name="package" [size]="30" [stroke]="1.6" /></div>
         </div>
 
         <!-- KPI: En Ruta -->
@@ -30,7 +31,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
             <span class="kpi-label">{{ t('kpi_in_transit') }}</span>
             <span class="kpi-value">{{ inTransit() }}</span>
           </div>
-          <div class="kpi-icon-box bg-orange">🛵</div>
+          <div class="kpi-icon-box tone-hot"><span class="blob"></span><app-icon name="truck" [size]="30" [stroke]="1.6" /></div>
         </div>
 
         <!-- KPI: Alertas Críticas -->
@@ -39,7 +40,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
             <span class="kpi-label">{{ t('kpi_critical_alerts') }}</span>
             <span class="kpi-value text-danger">{{ criticalAlerts() }}</span>
           </div>
-          <div class="kpi-icon-box bg-red">⚠️</div>
+          <div class="kpi-icon-box tone-danger"><span class="blob"></span><app-icon name="siren" [size]="30" [stroke]="1.6" /></div>
         </div>
 
         <!-- KPI: Cajas Disponibles -->
@@ -48,7 +49,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
             <span class="kpi-label">{{ t('kpi_boxes_available') }}</span>
             <span class="kpi-value text-ok">{{ availableBoxes() }}</span>
           </div>
-          <div class="kpi-icon-box bg-green">🔋</div>
+          <div class="kpi-icon-box tone-ok"><span class="blob"></span><app-icon name="battery" [size]="30" [stroke]="1.6" /></div>
         </div>
       </section>
 
@@ -70,7 +71,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
             [class.active]="activeFilter() === 'HOT'"
             (click)="setFilter('HOT')"
           >
-            🔥 {{ t('filter_hot') }}
+            <app-icon name="flame" [size]="15" /> {{ t('filter_hot') }}
           </button>
 
           <button
@@ -79,7 +80,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
             [class.active]="activeFilter() === 'COLD'"
             (click)="setFilter('COLD')"
           >
-            ❄️ {{ t('filter_cold') }}
+            <app-icon name="snow" [size]="15" /> {{ t('filter_cold') }}
           </button>
 
           <button
@@ -88,7 +89,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
             [class.active]="activeFilter() === 'BREACH'"
             (click)="setFilter('BREACH')"
           >
-            ⚠️ {{ t('filter_alerts_only') }}
+            <app-icon name="alert" [size]="15" /> {{ t('filter_alerts_only') }}
           </button>
         </div>
 
@@ -175,7 +176,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
                 <!-- Cerrojo -->
                 <td>
                   <div class="lock-cell">
-                    <span class="lock-icon">{{ s.lockStatus === 'LOCKED' ? '🔒' : '🔓' }}</span>
+                    <span class="lock-icon"><app-icon [name]="s.lockStatus === 'LOCKED' ? 'lock' : 'unlock'" [size]="16" /></span>
                     <span class="lock-text">
                       {{ s.lockStatus === 'LOCKED' ? t('status_locked') : t('status_unlocked') }}
                     </span>
@@ -232,7 +233,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
               <h2 class="drawer-title">{{ selectedShipment.id }}</h2>
               <p class="drawer-sub">{{ selectedShipment.customerAddress }}</p>
             </div>
-            <button class="drawer-close-btn" (click)="selectedShipment = null">✕</button>
+            <button class="drawer-close-btn" (click)="selectedShipment = null" aria-label="Cerrar detalle"><app-icon name="x" [size]="18" /></button>
           </div>
 
           <div class="drawer-body">
@@ -313,7 +314,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
               style="width: 100%; margin-top: 10px;"
               (click)="exportAuditReport(selectedShipment)"
             >
-              📄 Descargar Reporte de Custodia
+              <app-icon name="download" [size]="18" /> Descargar reporte de custodia
             </button>
             <button
               type="button"
@@ -321,7 +322,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
               style="width: 100%; margin-top: 10px;"
               (click)="completeShipment(selectedShipment)"
             >
-              ✅ Marcar como entregado
+              <app-icon name="check" [size]="18" /> Marcar como entregado
             </button>
           </div>
         </aside>
@@ -345,64 +346,89 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
     /* 1. KPI GRID */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(220px, 44%), 1fr));
       gap: 20px;
     }
 
     .kpi-card {
+      position: relative;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      padding: 20px 24px;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      min-height: 138px;
+      padding: 22px 24px;
+      overflow: hidden;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
 
       &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px -8px rgba(14, 23, 38, 0.12);
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-card);
       }
 
       &.alert-glow {
-        border-color: var(--danger);
-        background-color: #FFF5F5;
+        border-color: rgba(239, 68, 68, 0.35);
+        background: linear-gradient(180deg, #FFF7F7, #FFFFFF);
       }
     }
 
     .kpi-meta {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      justify-content: space-between;
+      align-self: stretch;
+      gap: 18px;
     }
 
     .kpi-label {
-      font-size: 13px;
-      font-weight: 500;
+      font-size: 12px;
+      font-weight: 600;
       color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
 
     .kpi-value {
       font-family: var(--font-display);
-      font-size: 32px;
+      font-size: 40px;
       font-weight: 700;
       color: var(--ink);
       line-height: 1;
+      letter-spacing: -0.03em;
 
       &.text-danger { color: var(--danger); }
-      &.text-ok { color: var(--ok); }
+      &.text-ok { color: var(--ink); }
+    }
+
+    @media (max-width: 600px) {
+      .kpi-card { min-height: 118px; padding: 16px; }
+      .kpi-value { font-size: 30px; }
+      .kpi-label { font-size: 10px; }
+      .kpi-icon-box { width: 40px; height: 40px; }
     }
 
     .kpi-icon-box {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
+      position: relative;
+      width: 64px;
+      height: 64px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
+      flex: none;
 
-      &.bg-blue { background-color: var(--cold-bg); }
-      &.bg-orange { background-color: var(--hot-bg); }
-      &.bg-red { background-color: var(--danger-bg); }
-      &.bg-green { background-color: var(--ok-bg); }
+      .blob {
+        position: absolute;
+        inset: -6px -10px auto auto;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        opacity: 0.9;
+      }
+      app-icon { position: relative; }
+
+      &.tone-cold { color: var(--cold-strong); .blob { background: var(--cold-bg); } }
+      &.tone-hot { color: var(--hot); .blob { background: var(--hot-bg); } }
+      &.tone-danger { color: var(--danger); .blob { background: var(--danger-bg); } }
+      &.tone-ok { color: var(--ok-strong); .blob { background: var(--ok-bg); } }
     }
 
     /* 2. TOOLBAR */
@@ -836,7 +862,12 @@ export class MonitoringDashboardComponent {
 
   filteredShipments = computed(() => {
     const filter = this.activeFilter();
-    const list = this.shipments();
+    const q = this.telemetryService.searchTerm().trim().toLowerCase();
+    const list = q
+      ? this.shipments().filter(s =>
+          [s.id, s.customerAddress, s.operatorName, s.smartBoxId].some(v => v.toLowerCase().includes(q))
+        )
+      : this.shipments();
     if (filter === 'ALL') return list;
     if (filter === 'HOT') return list.filter(s => s.thermalMode === 'HOT');
     if (filter === 'COLD') return list.filter(s => s.thermalMode === 'COLD');

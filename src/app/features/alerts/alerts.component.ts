@@ -1,4 +1,5 @@
 import { RevealDirective } from '../../shared/reveal.directive';
+import { IconComponent } from '../../shared/icon.component';
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslationService } from '../../core/services/translation.service';
@@ -8,7 +9,7 @@ import { AlertItem } from '../../core/models/shipment.model';
 @Component({
   selector: 'app-alerts',
   standalone: true,
-  imports: [CommonModule, RevealDirective],
+  imports: [CommonModule, RevealDirective, IconComponent],
   template: `
     <div class="alerts-container">
       <div class="alerts-header">
@@ -20,7 +21,7 @@ import { AlertItem } from '../../core/models/shipment.model';
 
       <div class="alerts-list">
         <div *ngIf="alerts().length === 0" class="empty-card card">
-          <span class="empty-icon">✓</span>
+          <span class="empty-icon"><app-icon name="shield" [size]="28" /></span>
           <p>{{ t('alerts_empty') }}</p>
         </div>
 
@@ -31,7 +32,7 @@ import { AlertItem } from '../../core/models/shipment.model';
           [class.critical-border]="alert.severity === 'CRITICAL' && !alert.resolved"
         >
           <div class="alert-icon-box" [ngClass]="alert.severity === 'CRITICAL' ? 'bg-danger-icon' : 'bg-warn-icon'">
-            {{ alert.severity === 'CRITICAL' ? '🚨' : '⚠️' }}
+            <app-icon [name]="alert.severity === 'CRITICAL' ? 'siren' : 'alert'" [size]="22" />
           </div>
 
           <div class="alert-content">
@@ -53,7 +54,7 @@ import { AlertItem } from '../../core/models/shipment.model';
 
             <div class="alert-footer">
               <div *ngIf="alert.resolved" class="resolved-tag">
-                ✓ {{ t('alert_resolved_badge') }}
+                <app-icon name="check" [size]="15" /> {{ t('alert_resolved_badge') }}
               </div>
               <button
                 *ngIf="!alert.resolved"
