@@ -1,5 +1,6 @@
 import { RevealDirective } from '../../shared/reveal.directive';
 import { IconComponent } from '../../shared/icon.component';
+import { TemperatureStripComponent } from './temperature-strip.component';
 import { CustodyOverviewComponent } from './custody-overview.component';
 import { FleetInsightsComponent } from './fleet-insights.component';
 import { Component, signal, computed, inject } from '@angular/core';
@@ -12,182 +13,57 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
 @Component({
   selector: 'app-monitoring-dashboard',
   standalone: true,
-  imports: [CommonModule, NewShipmentModalComponent, RevealDirective, IconComponent, CustodyOverviewComponent, FleetInsightsComponent],
+  imports: [CommonModule, NewShipmentModalComponent, RevealDirective, IconComponent, CustodyOverviewComponent, FleetInsightsComponent, TemperatureStripComponent],
   template: `
     <div class="monitoring-container">
       
       <div class="dash-grid">
       <div class="dash-main">
 
-      <!-- 2. BARRA DE HERRAMIENTAS Y FILTROS -->
-      <section class="toolbar-section">
-        <div class="filter-pills" role="tablist">
-          <button
-            type="button"
-            class="filter-pill"
-            [class.active]="activeFilter() === 'ALL'"
-            (click)="setFilter('ALL')"
-          >
-            {{ t('filter_all') }} ({{ shipments().length }})
-          </button>
-          
-          <button
-            type="button"
-            class="filter-pill"
-            [class.active]="activeFilter() === 'HOT'"
-            (click)="setFilter('HOT')"
-          >
-            <app-icon name="flame" [size]="15" /> {{ t('filter_hot') }}
-          </button>
+      <app-temperature-strip />
 
-          <button
-            type="button"
-            class="filter-pill"
-            [class.active]="activeFilter() === 'COLD'"
-            (click)="setFilter('COLD')"
-          >
-            <app-icon name="snow" [size]="15" /> {{ t('filter_cold') }}
+      <section class="list card" aria-label="Envíos en ruta">
+        <div class="list-head">
+          <h3 class="list-title">Envíos en ruta</h3>
+          <div class="seg" role="tablist" aria-label="Filtro">
+            <button type="button" role="tab" [class.on]="activeFilter() === 'ALL'" (click)="setFilter('ALL')">Todos <b>{{ shipments().length }}</b></button>
+            <button type="button" role="tab" [class.on]="activeFilter() === 'HOT'" (click)="setFilter('HOT')">Caliente</button>
+            <button type="button" role="tab" [class.on]="activeFilter() === 'COLD'" (click)="setFilter('COLD')">Frío</button>
+            <button type="button" role="tab" [class.on]="activeFilter() === 'BREACH'" (click)="setFilter('BREACH')">Fuera de rango</button>
+          </div>
+          <button type="button" class="btn btn-dark btn-new" (click)="showNewShipmentModal = true">
+            <app-icon name="plus" [size]="17" /> Nuevo envío
           </button>
+        </div>
 
-          <button
-            type="button"
-            class="filter-pill filter-alert-pill"
-            [class.active]="activeFilter() === 'BREACH'"
-            (click)="setFilter('BREACH')"
-          >
-            <app-icon name="alert" [size]="15" /> {{ t('filter_alerts_only') }}
-          </button>
+        <div class="rows-head" aria-hidden="true">
+          <span>Pedido</span><span>Perfil</span><span>Temperatura</span><span>Caja</span><span>Cerrojo</span><span>Estado</span><span></span>
         </div>
 
         <button
           type="button"
-          class="btn btn-primary"
-          (click)="showNewShipmentModal = true"
+          class="row"
+          *ngFor="let s of filteredShipments(); let i = index; trackBy: trackShipment"
+          [appReveal]="i"
+          (click)="selectShipmentForDetail(s)"
+          [attr.aria-label]="'Ver detalle de ' + s.id"
         >
-          {{ t('btn_new_shipment') }}
+          <span class="c-id">
+            <span class="id">{{ s.id }}</span>
+            <span class="addr">{{ s.customerAddress }}</span>
+          </span>
+          <span class="c-mode"><i class="dot" [class.hot]="s.thermalMode === 'HOT'"></i>{{ s.thermalMode === 'HOT' ? 'Caliente' : 'Frío' }}</span>
+          <span class="c-temp">
+            <strong [class.bad]="s.thermalStatus === 'BREACH'">{{ s.currentTemp === null ? '—' : s.currentTemp + '°' }}</strong>
+            <small>{{ s.targetMinTemp }}–{{ s.targetMaxTemp }}°</small>
+          </span>
+          <span class="c-box">{{ s.smartBoxId }}</span>
+          <span class="c-lock"><app-icon [name]="s.lockStatus === 'LOCKED' ? 'lock' : 'unlock'" [size]="15" />{{ s.lockStatus === 'LOCKED' ? 'Cerrado' : 'Abierto' }}</span>
+          <span class="c-state" [class.bad]="s.thermalStatus === 'BREACH'">{{ s.currentTemp === null ? 'Sin lectura' : s.thermalStatus === 'BREACH' ? 'Fuera de rango' : 'En rango' }}</span>
+          <span class="c-go" aria-hidden="true">↗</span>
         </button>
-      </section>
 
-      <!-- 3. TABLA DE MONITOREO EN TIEMPO REAL (Figma W04) -->
-      <section class="table-container card">
-        <div class="table-responsive">
-          <table class="monitoring-table" aria-label="Tabla de monitoreo térmico en vivo">
-            <thead>
-              <tr>
-                <th>{{ t('col_order_id') }}</th>
-                <th>{{ t('col_mode') }}</th>
-                <th>{{ t('col_temperature') }}</th>
-                <th>{{ t('col_operator') }}</th>
-                <th>{{ t('col_smartbox') }}</th>
-                <th>{{ t('col_lock') }}</th>
-                <th>{{ t('col_battery') }}</th>
-                <th>{{ t('col_status') }}</th>
-                <th class="text-right">{{ t('col_actions') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let s of filteredShipments(); let i = index; trackBy: trackShipment" [appReveal]="i" [class.row-alert]="s.thermalStatus === 'BREACH'">
-                <!-- Pedido -->
-                <td>
-                  <div class="order-id-cell">
-                    <span class="order-id">{{ s.id }}</span>
-                    <span class="order-address">{{ s.customerAddress }}</span>
-                  </div>
-                </td>
-
-                <!-- Modo Térmico -->
-                <td>
-                  <span
-                    class="status-chip"
-                    [ngClass]="s.thermalMode === 'HOT' ? 'chip-hot' : 'chip-cold'"
-                  >
-                    <span class="chip-dot"></span>
-                    {{ s.thermalMode === 'HOT' ? t('filter_hot') : t('filter_cold') }}
-                  </span>
-                </td>
-
-                <!-- Temperatura Actual vs Rango -->
-                <td>
-                  <div class="temp-cell">
-                    <div class="temp-header">
-                      <span class="temp-num font-display" [class.text-danger]="s.thermalStatus === 'BREACH'">
-                        {{ s.currentTemp ?? '--' }}°C
-                      </span>
-                      <span
-                        class="status-chip"
-                        [ngClass]="s.thermalStatus === 'OPTIMAL' ? 'chip-ok' : 'chip-danger'"
-                      >
-                        {{ s.thermalStatus === 'OPTIMAL' ? t('status_in_range') : t('status_out_of_range') }}
-                      </span>
-                    </div>
-                    <span class="temp-range">
-                      Objetivo: {{ s.targetMinTemp }}°C – {{ s.targetMaxTemp }}°C
-                    </span>
-                  </div>
-                </td>
-
-                <!-- Repartidor -->
-                <td>
-                  <div class="operator-cell">
-                    <span class="operator-avatar">{{ s.operatorName.slice(0, 2) }}</span>
-                    <span class="operator-name">{{ s.operatorName }}</span>
-                  </div>
-                </td>
-
-                <!-- SmartBox -->
-                <td>
-                  <span class="box-badge">{{ s.smartBoxId }}</span>
-                </td>
-
-                <!-- Cerrojo -->
-                <td>
-                  <div class="lock-cell">
-                    <span class="lock-icon"><app-icon [name]="s.lockStatus === 'LOCKED' ? 'lock' : 'unlock'" [size]="16" /></span>
-                    <span class="lock-text">
-                      {{ s.lockStatus === 'LOCKED' ? t('status_locked') : t('status_unlocked') }}
-                    </span>
-                  </div>
-                </td>
-
-                <!-- Batería -->
-                <td>
-                  <div class="battery-cell">
-                    <div class="battery-bar-bg">
-                      <div
-                        class="battery-bar-fill"
-                        [style.width.%]="s.batteryLevel"
-                        [ngClass]="s.batteryLevel < 20 ? 'bg-danger' : s.batteryLevel < 50 ? 'bg-warn' : 'bg-ok'"
-                      ></div>
-                    </div>
-                    <span class="battery-text">{{ s.batteryLevel }}%</span>
-                  </div>
-                </td>
-
-                <!-- Estado -->
-                <td>
-                  <span
-                    class="status-chip"
-                    [ngClass]="s.status === 'CRITICAL' ? 'chip-danger' : 'chip-neutral'"
-                  >
-                    <span class="chip-dot"></span>
-                    {{ s.status === 'CRITICAL' ? t('status_critical') : t('status_in_transit') }}
-                  </span>
-                </td>
-
-                <!-- Acción Ver Trayecto -->
-                <td class="text-right">
-                  <button
-                    type="button"
-                    class="btn btn-secondary btn-sm"
-                    (click)="selectShipmentForDetail(s)"
-                  >
-                    {{ t('btn_view_track') }} ›
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <p *ngIf="!filteredShipments().length" class="empty">No hay envíos para mostrar.</p>
       </section>
 
       <app-fleet-insights />
@@ -325,311 +201,62 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
       .dash-side { position: static; order: -1; }
     }
 
-    /* 1. KPI GRID */
-    .kpi-grid {
+    /* Lista de envíos limpia y responsiva */
+    .list { padding: 6px 0 8px; }
+    .list-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 22px 12px; }
+    .list-title { font-size: 17px; font-weight: 600; margin-right: auto; }
+    .seg { display: inline-flex; gap: 4px; padding: 4px; background: var(--bg-alt); border-radius: 999px; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+    .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500; height: 34px; padding: 0 14px; border-radius: 999px; white-space: nowrap; transition: background .2s, color .2s; }
+    .seg button b { font-weight: 600; margin-left: 4px; }
+    .seg button.on { background: var(--white); color: var(--ink); box-shadow: var(--shadow-sm); }
+    .btn-new { height: 40px; padding: 0 18px; }
+
+    .rows-head, .row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(220px, 44%), 1fr));
-      gap: 20px;
-    }
-
-    .kpi-card {
-      position: relative;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      min-height: 138px;
-      padding: 22px 24px;
-      overflow: hidden;
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
-
-      &:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow-card);
-      }
-
-      &.alert-glow {
-        border-color: rgba(239, 68, 68, 0.35);
-        background: #FFF7F7;
-      }
-    }
-
-    .kpi-meta {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      align-self: stretch;
-      gap: 18px;
-    }
-
-    .kpi-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .kpi-value {
-      font-family: var(--font-display);
-      font-size: 40px;
-      font-weight: 700;
-      color: var(--ink);
-      line-height: 1;
-      letter-spacing: -0.03em;
-
-      &.text-danger { color: var(--danger); }
-      &.text-ok { color: var(--ink); }
-    }
-
-    @media (max-width: 600px) {
-      .kpi-card { min-height: 118px; padding: 16px; }
-      .kpi-value { font-size: 30px; }
-      .kpi-label { font-size: 10px; }
-      .kpi-icon-box { width: 40px; height: 40px; }
-    }
-
-    .kpi-icon-box {
-      position: relative;
-      width: 64px;
-      height: 64px;
-      display: flex;
+      grid-template-columns: minmax(170px, 2.2fr) 1fr 1.1fr 0.9fr 1fr 1.2fr 32px;
       align-items: center;
-      justify-content: center;
-      flex: none;
+      gap: 12px;
+      padding: 0 22px;
+    }
+    .rows-head { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding-top: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .row {
+      width: 100%; min-height: 68px; border: 0; border-bottom: 1px solid var(--line); background: transparent;
+      font: inherit; text-align: left; color: var(--ink-2); font-size: 13px; transition: background-color .18s ease;
+    }
+    .row:last-of-type { border-bottom: 0; }
+    .row:hover { background: #FAFBFC; }
+    .row:hover .c-go { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .c-id { display: flex; flex-direction: column; min-width: 0; }
+    .id { font-weight: 600; color: var(--ink); font-size: 14px; }
+    .addr { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .c-mode { display: inline-flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cold); flex: none; }
+    .dot.hot { background: var(--hot); }
+    .c-temp { display: flex; align-items: baseline; gap: 6px; }
+    .c-temp strong { font-size: 17px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .c-temp strong.bad { color: var(--hot-strong); }
+    .c-temp small { font-size: 11px; color: var(--muted); }
+    .c-box { font-variant-numeric: tabular-nums; }
+    .c-lock { display: inline-flex; align-items: center; gap: 6px; }
+    .c-state { color: var(--muted); }
+    .c-state.bad { color: var(--hot-strong); font-weight: 600; }
+    .c-go { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); transition: all .2s ease; }
+    .empty { padding: 28px 22px; color: var(--muted); font-size: 14px; }
 
-      .blob {
-        position: absolute;
-        inset: -6px -10px auto auto;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        opacity: 0.9;
+    @media (max-width: 760px) {
+      .rows-head { display: none; }
+      .list-head { padding: 14px 16px 10px; }
+      .btn-new { width: 100%; }
+      .row {
+        grid-template-columns: 1fr auto;
+        grid-template-areas: 'id temp' 'meta state';
+        row-gap: 6px; padding: 14px 16px;
       }
-      app-icon { position: relative; }
-
-      &.tone-cold { color: var(--cold-strong); .blob { background: var(--cold-bg); } }
-      &.tone-hot { color: var(--hot); .blob { background: var(--hot-bg); } }
-      &.tone-danger { color: var(--danger); .blob { background: var(--danger-bg); } }
-      &.tone-ok { color: var(--ok-strong); .blob { background: var(--ok-bg); } }
-    }
-
-    /* 2. TOOLBAR */
-    .toolbar-section {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-
-    .filter-pills {
-      display: flex;
-      gap: 8px;
-      background-color: var(--bg-alt);
-      padding: 4px;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--line);
-    }
-
-    .filter-pill {
-      background: none;
-      border: none;
-      font-family: var(--font-body);
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-      padding: 8px 18px;
-      border-radius: var(--radius-pill);
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &:hover:not(.active) {
-        color: var(--ink);
-      }
-
-      &.active {
-        background-color: var(--white);
-        color: var(--ink);
-        box-shadow: 0 2px 6px rgba(14, 23, 38, 0.08);
-      }
-
-      &.filter-alert-pill.active {
-        color: var(--danger);
-      }
-    }
-
-    /* 3. TABLA */
-    .table-container {
-      padding: 0;
-      overflow: hidden;
-    }
-
-    .table-responsive {
-      overflow-x: auto;
-    }
-
-    .monitoring-table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 14px;
-
-      thead th {
-        background-color: #F8FAFC;
-        padding: 16px 20px;
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--muted);
-        border-bottom: 1px solid var(--line);
-      }
-
-      tbody tr {
-        border-bottom: 1px solid var(--line);
-        transition: background-color 0.15s ease;
-
-        &:hover {
-          background-color: #F8FAFC;
-        }
-
-        &.row-alert {
-          background-color: #FFF8F8;
-        }
-      }
-
-      tbody td {
-        padding: 16px 20px;
-        vertical-align: middle;
-      }
-    }
-
-    .text-right { text-align: right; }
-
-    .order-id-cell {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .order-id {
-      font-family: var(--font-display);
-      font-weight: 700;
-      color: var(--ink);
-      font-size: 15px;
-    }
-
-    .order-address {
-      font-size: 12px;
-      color: var(--muted);
-      max-width: 200px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .temp-cell {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .temp-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .temp-num {
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--ink);
-
-      &.text-danger { color: var(--danger); }
-    }
-
-    .temp-range {
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .operator-cell {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .operator-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background-color: var(--bg-alt);
-      color: var(--ink-2);
-      font-size: 11px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--line);
-    }
-
-    .operator-name {
-      font-weight: 500;
-      color: var(--ink);
-    }
-
-    .box-badge {
-      display: inline-block;
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 12px;
-      color: var(--ink-2);
-      background-color: var(--bg-alt);
-      padding: 3px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--line);
-    }
-
-    .lock-cell {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-    }
-
-    .battery-cell {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .battery-bar-bg {
-      width: 44px;
-      height: 8px;
-      background-color: var(--bg-alt);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .battery-bar-fill {
-      height: 100%;
-      border-radius: 4px;
-
-      &.bg-ok { background-color: var(--ok); }
-      &.bg-warn { background-color: var(--warn); }
-      &.bg-danger { background-color: var(--danger); }
-    }
-
-    .battery-text {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-    }
-
-    .btn-sm {
-      height: 34px;
-      padding: 0 16px;
-      font-size: 12px;
+      .c-id { grid-area: id; }
+      .c-temp { grid-area: temp; justify-self: end; }
+      .c-mode { grid-area: meta; }
+      .c-state { grid-area: state; justify-self: end; }
+      .c-box, .c-lock, .c-go { display: none; }
     }
 
     /* 4. DRAWER DETALLE (W05) */

@@ -150,58 +150,38 @@ h1, h2, h3, .font-display {
   }
 }
 
-/* Chips de estado accesibles (Color + Ícono + Texto) */
+/* Chips de estado: neutros, el color solo en un punto (diseño limpio) */
 .status-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background-color: var(--white);
+  color: var(--ink-2);
   font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
 
-  .chip-dot {
-    width: 7px;
-    height: 7px;
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
+    background-color: var(--muted);
+    flex: none;
   }
 
-  &.chip-hot {
-    background-color: var(--hot-bg);
-    color: var(--hot-strong);
-    .chip-dot { background-color: var(--hot); }
-  }
+  .chip-dot { display: none; }
 
-  &.chip-cold {
-    background-color: var(--cold-bg);
-    color: var(--cold-strong);
-    .chip-dot { background-color: var(--cold); }
-  }
-
-  &.chip-ok {
-    background-color: var(--ok-bg);
-    color: var(--ok-strong);
-    .chip-dot { background-color: var(--ok); }
-  }
-
-  &.chip-warn {
-    background-color: var(--warn-bg);
-    color: var(--warn-strong);
-    .chip-dot { background-color: var(--warn); }
-  }
-
-  &.chip-danger {
-    background-color: var(--danger-bg);
-    color: var(--danger-strong);
-    .chip-dot { background-color: var(--danger); }
-  }
-
-  &.chip-neutral {
-    background-color: var(--bg-alt);
-    color: var(--ink-2);
-    .chip-dot { background-color: var(--muted); }
-  }
+  &.chip-hot::before { background-color: var(--hot); }
+  &.chip-cold::before { background-color: var(--cold); }
+  &.chip-ok::before { background-color: var(--ok); }
+  &.chip-warn::before { background-color: var(--warn); }
+  &.chip-danger { color: var(--danger-strong); &::before { background-color: var(--danger); } }
+  &.chip-neutral::before { background-color: var(--muted); }
 }
 
 /* Tarjeta estándar */

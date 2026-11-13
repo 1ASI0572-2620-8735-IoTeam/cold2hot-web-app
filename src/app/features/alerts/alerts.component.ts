@@ -1,226 +1,186 @@
-import { RevealDirective } from '../../shared/reveal.directive';
-import { IconComponent } from '../../shared/icon.component';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TranslationService } from '../../core/services/translation.service';
 import { TelemetryService } from '../../core/services/telemetry.service';
 import { AlertItem } from '../../core/models/shipment.model';
+import { IconComponent } from '../../shared/icon.component';
+import { RevealDirective } from '../../shared/reveal.directive';
+
+type Filter = 'OPEN' | 'CRITICAL' | 'RESOLVED';
+
+const TITLES: Record<AlertItem['type'], string> = {
+  TEMP_BREACH: 'Desvío térmico',
+  LID_OPEN: 'Tapa abierta',
+  UNAUTHORIZED_ACCESS: 'Apertura no autorizada',
+  LOW_BATTERY: 'Batería baja'
+};
+
+const ICONS: Record<AlertItem['type'], string> = {
+  TEMP_BREACH: 'thermometer',
+  LID_OPEN: 'unlock',
+  UNAUTHORIZED_ACCESS: 'shield',
+  LOW_BATTERY: 'battery'
+};
+
+/** Resume el mensaje del backend en pocas palabras. */
+const shortDetail = (a: AlertItem): string => {
+  if (a.type === 'TEMP_BREACH') {
+    const nums = [...a.message.matchAll(/(-?\d+(?:\.\d+)?)°C/g)].map(m => m[1]);
+    if (nums.length >= 2) return `${nums[0]}° · ${a.message.includes('inferior') ? 'mín.' : 'máx.'} ${nums[1]}°`;
+  }
+  if (a.type === 'LOW_BATTERY') {
+    const m = a.message.match(/(\d+)%/);
+    if (m) return `${m[1]}% de carga`;
+  }
+  if (a.type === 'LID_OPEN') return 'Sin OTP válido';
+  if (a.type === 'UNAUTHORIZED_ACCESS') return a.message.toLowerCase().includes('forzada') ? 'Apertura forzada' : 'Sin OTP · paquete ausente';
+  return a.message;
+};
 
 @Component({
   selector: 'app-alerts',
   standalone: true,
-  imports: [CommonModule, RevealDirective, IconComponent],
+  imports: [CommonModule, IconComponent, RevealDirective],
   template: `
-    <div class="alerts-container">
-      <div class="alerts-header">
-        <div>
-          <h2 class="section-title">{{ t('alerts_title') }}</h2>
-          <p class="section-sub">Eventos de seguridad y anomalías térmicas reportadas por los sensores</p>
+    <div class="page">
+      <!-- Resumen al estilo de la referencia: cifra grande + indicadores en fila -->
+      <section class="summary card" appReveal>
+        <div class="big">
+          <span class="big-num">{{ open().length }}</span>
+          <span class="big-label">alertas abiertas</span>
         </div>
-      </div>
-
-      <div class="alerts-list">
-        <div *ngIf="alerts().length === 0" class="empty-card card">
-          <span class="empty-icon"><app-icon name="shield" [size]="28" /></span>
-          <p>{{ t('alerts_empty') }}</p>
-        </div>
-
-        <div
-          *ngFor="let alert of alerts(); let i = index; trackBy: trackAlert" [appReveal]="i"
-          class="alert-card card"
-          [class.resolved]="alert.resolved"
-          [class.critical-border]="alert.severity === 'CRITICAL' && !alert.resolved"
-        >
-          <div class="alert-icon-box" [ngClass]="alert.severity === 'CRITICAL' ? 'bg-danger-icon' : 'bg-warn-icon'">
-            <app-icon [name]="alert.severity === 'CRITICAL' ? 'siren' : 'alert'" [size]="22" />
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">Críticas</span>
+            <span class="stat-val"><i class="d crit"></i>{{ critical().length }}</span>
           </div>
-
-          <div class="alert-content">
-            <div class="alert-top">
-              <div class="alert-badges">
-                <span
-                  class="status-chip"
-                  [ngClass]="alert.severity === 'CRITICAL' ? 'chip-danger' : 'chip-warn'"
-                >
-                  {{ alert.severity === 'CRITICAL' ? t('status_critical') : 'Advertencia' }}
-                </span>
-                <span class="chip-order">{{ alert.shipmentId }}</span>
-                <span class="chip-box">{{ alert.smartBoxId }}</span>
-              </div>
-              <span class="alert-time">{{ alert.timestamp }}</span>
-            </div>
-
-            <p class="alert-message">{{ alert.message }}</p>
-
-            <div class="alert-footer">
-              <div *ngIf="alert.resolved" class="resolved-tag">
-                <app-icon name="check" [size]="15" /> {{ t('alert_resolved_badge') }}
-              </div>
-              <button
-                *ngIf="!alert.resolved"
-                type="button"
-                class="btn btn-secondary btn-sm"
-                (click)="resolveAlert(alert.id)"
-              >
-                {{ t('alert_resolve') }}
-              </button>
-            </div>
+          <div class="stat">
+            <span class="stat-label">Advertencias</span>
+            <span class="stat-val"><i class="d warn"></i>{{ open().length - critical().length }}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Atendidas</span>
+            <span class="stat-val"><i class="d done"></i>{{ resolved().length }}</span>
           </div>
         </div>
-      </div>
+      </section>
+
+      <section class="card list" [appReveal]="1">
+        <div class="list-head">
+          <h3>Alertas</h3>
+          <div class="seg" role="tablist" aria-label="Filtrar alertas">
+            <button type="button" role="tab" [class.on]="filter() === 'OPEN'" (click)="filter.set('OPEN')">Abiertas</button>
+            <button type="button" role="tab" [class.on]="filter() === 'CRITICAL'" (click)="filter.set('CRITICAL')">Críticas</button>
+            <button type="button" role="tab" [class.on]="filter() === 'RESOLVED'" (click)="filter.set('RESOLVED')">Atendidas</button>
+          </div>
+        </div>
+
+        <div *ngFor="let a of visible(); let i = index; trackBy: trackAlert" class="row" [class.done]="a.resolved" [appReveal]="i">
+          <span class="ico" [class.crit]="a.severity === 'CRITICAL' && !a.resolved">
+            <app-icon [name]="icon(a)" [size]="19" />
+          </span>
+          <div class="main">
+            <span class="title">{{ title(a) }}</span>
+            <span class="meta">{{ a.shipmentId !== '—' ? a.shipmentId + ' · ' : '' }}{{ a.smartBoxId }}</span>
+          </div>
+          <span class="detail">{{ detail(a) }}</span>
+          <span class="time">{{ a.timestamp }}</span>
+          <span class="act">
+            <button *ngIf="!a.resolved" type="button" class="btn btn-secondary btn-xs" (click)="resolve(a.id)">Atender</button>
+            <span *ngIf="a.resolved" class="ok"><app-icon name="check" [size]="15" /> Atendida</span>
+          </span>
+        </div>
+
+        <div *ngIf="!visible().length" class="empty">
+          <app-icon name="shield" [size]="26" />
+          <p>{{ filter() === 'RESOLVED' ? 'Aún no hay alertas atendidas.' : 'Todo en orden. No hay alertas.' }}</p>
+        </div>
+      </section>
     </div>
   `,
   styles: [`
-    .alerts-container {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
+    .page { display: flex; flex-direction: column; gap: 18px; }
 
-    .alerts-header {
-      display: flex;
-      justify-content: space-between;
+    .summary { display: grid; grid-template-columns: auto 1fr; gap: 40px; align-items: center; padding: 24px 28px; }
+    .big { display: flex; flex-direction: column; }
+    .big-num { font-size: 64px; font-weight: 500; line-height: .95; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+    .big-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .stat { display: flex; flex-direction: column; gap: 6px; padding: 4px 24px; border-left: 1px solid var(--line); }
+    .stat-label { font-size: 13px; color: var(--muted); }
+    .stat-val { display: inline-flex; align-items: center; gap: 10px; font-size: 28px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .d { width: 8px; height: 8px; border-radius: 50%; }
+    .d.crit { background: var(--danger); }
+    .d.warn { background: var(--hot); }
+    .d.done { background: var(--cold); }
+
+    .list { padding: 6px 0; }
+    .list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 22px 12px; border-bottom: 1px solid var(--line); }
+    h3 { font-size: 17px; font-weight: 600; }
+    .seg { display: inline-flex; gap: 4px; padding: 4px; background: var(--bg-alt); border-radius: 999px; }
+    .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500; height: 34px; padding: 0 14px; border-radius: 999px; }
+    .seg button.on { background: var(--white); color: var(--ink); box-shadow: var(--shadow-sm); }
+
+    .row {
+      display: grid;
+      grid-template-columns: 40px minmax(160px, 1.4fr) 1fr 90px 110px;
       align-items: center;
+      gap: 14px;
+      padding: 14px 22px;
+      border-bottom: 1px solid var(--line);
     }
+    .row:last-of-type { border-bottom: 0; }
+    .row.done { opacity: .55; }
+    .ico { width: 40px; height: 40px; border-radius: 12px; background: var(--bg-alt); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; }
+    .ico.crit { background: var(--danger-bg); color: var(--danger-strong); }
+    .main { display: flex; flex-direction: column; min-width: 0; }
+    .title { font-weight: 600; font-size: 14px; color: var(--ink); }
+    .meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .detail { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    .time { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .act { justify-self: end; }
+    .btn-xs { height: 34px; padding: 0 14px; font-size: 13px; }
+    .ok { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; color: var(--muted); font-size: 14px; }
 
-    .section-title {
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .section-sub {
-      font-size: 14px;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    .alerts-list {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .alert-card {
-      display: flex;
-      gap: 20px;
-      padding: 20px 24px;
-      transition: all 0.2s ease;
-
-      &.critical-border {
-        border-left: 5px solid var(--danger);
+    @media (max-width: 760px) {
+      .summary { grid-template-columns: 1fr; gap: 18px; padding: 20px; }
+      .big-num { font-size: 52px; }
+      .stat { padding: 2px 14px; }
+      .stat:first-child { border-left: 0; padding-left: 0; }
+      .stat-val { font-size: 22px; }
+      .list-head { padding: 12px 16px; }
+      .row {
+        grid-template-columns: 40px 1fr auto;
+        grid-template-areas: 'ico main time' 'ico detail act';
+        row-gap: 6px; padding: 14px 16px;
       }
-
-      &.resolved {
-        opacity: 0.6;
-        background-color: #F8FAFC;
-      }
-    }
-
-    .alert-icon-box {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      flex-shrink: 0;
-
-      &.bg-danger-icon { background-color: var(--danger-bg); }
-      &.bg-warn-icon { background-color: var(--warn-bg); }
-    }
-
-    .alert-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .alert-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .alert-badges {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .chip-order, .chip-box {
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 12px;
-      background-color: var(--bg-alt);
-      color: var(--ink-2);
-      padding: 3px 8px;
-      border-radius: 6px;
-    }
-
-    .alert-time {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .alert-message {
-      font-size: 14px;
-      color: var(--ink);
-      line-height: 1.4;
-    }
-
-    .alert-footer {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 4px;
-    }
-
-    .resolved-tag {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--ok);
-      background-color: var(--ok-bg);
-      padding: 4px 10px;
-      border-radius: var(--radius-pill);
-    }
-
-    .btn-sm {
-      height: 34px;
-      padding: 0 16px;
-      font-size: 12px;
-    }
-
-    .empty-card {
-      text-align: center;
-      padding: 48px;
-      color: var(--muted);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .empty-icon {
-      font-size: 36px;
-      color: var(--ok);
+      .ico { grid-area: ico; align-self: start; }
+      .main { grid-area: main; }
+      .detail { grid-area: detail; }
+      .time { grid-area: time; justify-self: end; }
+      .act { grid-area: act; }
     }
   `]
 })
 export class AlertsComponent {
-  private translationService = inject(TranslationService);
   private telemetryService = inject(TelemetryService);
 
-  alerts = this.telemetryService.alerts;
+  filter = signal<Filter>('OPEN');
+  private all = this.telemetryService.alerts;
+  open = computed(() => this.all().filter(a => !a.resolved));
+  critical = computed(() => this.open().filter(a => a.severity === 'CRITICAL'));
+  resolved = computed(() => this.all().filter(a => a.resolved));
+  visible = computed(() => {
+    const f = this.filter();
+    return f === 'OPEN' ? this.open() : f === 'CRITICAL' ? this.critical() : this.resolved();
+  });
 
-  t(key: string): string {
-    return this.translationService.translate(key);
-  }
-
+  title = (a: AlertItem) => TITLES[a.type] ?? a.type;
+  icon = (a: AlertItem) => ICONS[a.type] ?? 'alert';
+  detail = shortDetail;
   trackAlert = (_: number, a: { id: string }) => a.id;
 
-  resolveAlert(id: string) {
+  resolve(id: string) {
     this.telemetryService.resolveAlert(id);
   }
 }

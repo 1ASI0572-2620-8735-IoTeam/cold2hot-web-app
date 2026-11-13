@@ -24,8 +24,8 @@ const SEGMENTS = 12;
   imports: [CommonModule, RouterModule, IconComponent, RevealDirective],
   template: `
     <section class="hero card" appReveal>
-      <p class="hello">Hola, {{ firstName() }}</p>
-      <h2 class="hero-title">Así está tu cadena térmica</h2>
+      <h2 class="hero-title">Hola, {{ firstName() }}</h2>
+      <p class="hello">Integridad térmica de tus envíos</p>
 
       <div class="gauge-wrap">
         <svg viewBox="0 0 240 140" class="gauge" role="img" [attr.aria-label]="'Integridad térmica ' + scoreLabel()">
@@ -39,9 +39,9 @@ const SEGMENTS = 12;
           />
         </svg>
         <div class="gauge-center">
-          <span class="badge" [ngClass]="'b-' + scoreTone()">{{ scoreBadge() }}</span>
+          <span class="tag"><i [ngClass]="'t-' + scoreTone()"></i>{{ scoreBadge() }}</span>
           <span class="score">{{ scoreLabel() }}</span>
-          <span class="score-sub">envíos dentro de rango</span>
+          <span class="score-sub">en rango</span>
         </div>
         <span class="g-min">0%</span>
         <span class="g-max">100%</span>
@@ -60,22 +60,21 @@ const SEGMENTS = 12;
         </div>
         <div class="tile-row">
           <span class="tile-value">{{ tile.value }}</span>
-          <span class="badge" [ngClass]="'b-' + tile.tone">{{ tile.badge }}</span>
+          <span class="tag"><i [ngClass]="'t-' + tile.tone"></i>{{ tile.badge }}</span>
         </div>
-        <p class="tile-hint">{{ tile.hint }}</p>
       </a>
     </div>
   `,
   styles: [`
     :host { display: flex; flex-direction: column; gap: 16px; }
-    .hero { padding: 26px 24px 24px; text-align: center; background: #F2FAFF; border-color: rgba(56, 189, 248, 0.25); }
+    .hero { padding: 26px 24px 24px; text-align: center; }
     .hello { font-size: 15px; color: var(--muted); font-weight: 500; }
-    .hero-title { font-size: 24px; font-weight: 700; margin-top: 2px; line-height: 1.25; }
+    .hero-title { font-size: 26px; font-weight: 600; line-height: 1.2; }
     .gauge-wrap { position: relative; width: 260px; max-width: 100%; margin: 18px auto 6px; }
     .gauge { width: 100%; display: block; }
     .gauge path { transition: stroke 0.4s ease; }
     .gauge-center { position: absolute; left: 0; right: 0; bottom: 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .score { font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .score { font-size: 48px; font-weight: 500; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
     .score-sub { font-size: 12px; color: var(--muted); }
     .g-min, .g-max { position: absolute; bottom: -18px; font-size: 11px; color: var(--muted); }
     .g-min { left: 10px; }
@@ -86,13 +85,20 @@ const SEGMENTS = 12;
     .tile { padding: 16px; display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: inherit; border-radius: 18px; }
     .tile:hover { transform: translateY(-2px); }
     .tile-head { display: flex; justify-content: space-between; align-items: center; }
-    .tile-label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+    .tile-label { font-size: 13px; font-weight: 500; color: var(--muted); }
     .tile-arrow { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); transition: background .2s, color .2s; }
     .tile:hover .tile-arrow { background: var(--ink); color: #fff; border-color: var(--ink); }
     .tile-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .tile-value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .tile-value { font-size: 32px; font-weight: 500; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
     .tile-hint { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
 
+    .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .tag i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    .tag i.t-cold { background: var(--cold); }
+    .tag i.t-hot { background: var(--hot); }
+    .tag i.t-danger { background: var(--danger); }
+    .tag i.t-ok { background: var(--ok); }
+    .tag i.t-neutral { background: #CBD5E1; }
     .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
     .b-cold { background: var(--cold-bg); color: var(--cold-strong); }
     .b-hot { background: var(--hot-bg); color: var(--hot-strong); }
@@ -160,12 +166,12 @@ export class CustodyOverviewComponent {
     const breaches = shipments.reduce((n, s) => n + s.history.filter(h => h.temperature < s.targetMinTemp || h.temperature > s.targetMaxTemp).length, 0);
 
     return [
-      { label: 'Envíos activos', value: String(shipments.length), hint: 'Despachos en ruta con SmartBox asignada.', badge: shipments.length ? 'En ruta' : 'Sin envíos', tone: shipments.length ? 'cold' : 'neutral', link: '/dashboard/monitoring' },
-      { label: 'Alertas críticas', value: String(critical), hint: 'Desvíos térmicos o aperturas no autorizadas.', badge: critical ? 'Revisar' : 'Todo bien', tone: critical ? 'danger' : 'ok', link: '/dashboard/alerts' },
-      { label: 'Cajas disponibles', value: String(available), hint: 'Listas para asignar a un nuevo envío.', badge: available ? 'Disponibles' : 'Agotadas', tone: available ? 'cold' : 'hot', link: '/dashboard/smartboxes' },
-      { label: 'Batería en ruta', value: avgBattery === null ? '—' : avgBattery + '%', hint: 'Promedio de las cajas que están en ruta.', badge: avgBattery === null ? 'Sin datos' : avgBattery >= 30 ? 'Estable' : 'Baja', tone: avgBattery === null ? 'neutral' : avgBattery >= 30 ? 'ok' : 'hot', link: '/dashboard/smartboxes' },
-      { label: 'Lecturas fuera', value: String(breaches), hint: 'Lecturas recientes fuera del rango del envío.', badge: breaches ? 'Atención' : 'En rango', tone: breaches ? 'hot' : 'cold', link: '/dashboard/history' },
-      { label: 'Cerrojos abiertos', value: String(unlocked), hint: 'Cajas desbloqueadas con OTP en este momento.', badge: unlocked ? 'Abiertos' : 'Cerrados', tone: unlocked ? 'hot' : 'ok', link: '/dashboard/history' }
+      { label: 'En ruta', value: String(shipments.length), hint: 'Despachos en ruta con SmartBox asignada.', badge: shipments.length ? 'Activos' : 'Ninguno', tone: shipments.length ? 'cold' : 'neutral', link: '/dashboard/monitoring' },
+      { label: 'Alertas', value: String(critical), hint: 'Desvíos térmicos o aperturas no autorizadas.', badge: critical ? 'Críticas' : 'Ninguna', tone: critical ? 'danger' : 'ok', link: '/dashboard/alerts' },
+      { label: 'Cajas libres', value: String(available), hint: 'Listas para asignar a un nuevo envío.', badge: available ? 'Disponibles' : 'Agotadas', tone: available ? 'cold' : 'hot', link: '/dashboard/smartboxes' },
+      { label: 'Batería', value: avgBattery === null ? '—' : avgBattery + '%', hint: 'Promedio de las cajas que están en ruta.', badge: avgBattery === null ? 'Sin datos' : avgBattery >= 30 ? 'Estable' : 'Baja', tone: avgBattery === null ? 'neutral' : avgBattery >= 30 ? 'ok' : 'hot', link: '/dashboard/smartboxes' },
+      { label: 'Desvíos', value: String(breaches), hint: 'Lecturas recientes fuera del rango del envío.', badge: breaches ? 'Atención' : 'En rango', tone: breaches ? 'hot' : 'cold', link: '/dashboard/history' },
+      { label: 'Cerrojos', value: String(unlocked), hint: 'Cajas desbloqueadas con OTP en este momento.', badge: unlocked ? 'Abiertos' : 'Todos cerrados', tone: unlocked ? 'hot' : 'ok', link: '/dashboard/history' }
     ];
   });
 }

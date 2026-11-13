@@ -1,6 +1,6 @@
 import { RevealDirective } from '../../shared/reveal.directive';
 import { IconComponent } from '../../shared/icon.component';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuditReport } from '../../core/models/shipment.model';
 import { TelemetryService } from '../../core/services/telemetry.service';
@@ -10,66 +10,134 @@ import { TelemetryService } from '../../core/services/telemetry.service';
   standalone: true,
   imports: [CommonModule, RevealDirective, IconComponent],
   template: `
-    <div class="hist-container">
-      <div class="hist-header">
-        <div>
-          <h2 class="section-title">Historial de entregas</h2>
-          <p class="section-sub">Trazabilidad térmica y de accesos por envío (auditoría)</p>
+    <div class="page">
+      <section class="summary card" appReveal>
+        <div class="big">
+          <span class="big-num">{{ reports().length }}</span>
+          <span class="big-label">envíos registrados</span>
         </div>
-        <button class="btn btn-secondary" (click)="load()">↻ Actualizar</button>
-      </div>
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">Custodia íntegra</span>
+            <span class="stat-val">{{ integrity() }}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Con desvíos</span>
+            <span class="stat-val">{{ withBreaches() }}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Entregados</span>
+            <span class="stat-val">{{ delivered() }}</span>
+          </div>
+        </div>
+      </section>
 
-      <p *ngIf="error" class="hist-error">{{ error }}</p>
-      <p *ngIf="!error && loaded && reports().length === 0" class="hist-empty card">Todavía no hay envíos registrados.</p>
+      <section class="card list" [appReveal]="1">
+        <div class="list-head">
+          <h3>Historial de entregas</h3>
+          <button class="btn btn-secondary btn-xs" (click)="load()">Actualizar</button>
+        </div>
 
-      <div *ngIf="reports().length" class="card hist-card">
-        <table class="hist-table">
-          <thead>
-            <tr>
-              <th>Envío</th><th>Destino</th><th>Caja</th><th>Rango</th><th>Lecturas</th><th>Mín / Máx</th>
-              <th>Custodia</th><th>Estado</th><th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let r of reports(); let i = index" [appReveal]="i">
-              <td class="mono">#{{ r.shipmentId }}</td>
-              <td>{{ r.customerAddress }}</td>
-              <td>{{ r.smartBoxId }}</td>
-              <td>{{ r.minTemp }}–{{ r.maxTemp }}°C</td>
-              <td>{{ r.thermal.readings }}</td>
-              <td>{{ r.thermal.min ?? '--' }} / {{ r.thermal.max ?? '--' }}</td>
-              <td>
-                <span class="status-chip" [ngClass]="r.thermal.compliant && !r.thermalAlerts.length ? 'chip-ok' : 'chip-danger'">
-                  {{ r.thermal.compliant && !r.thermalAlerts.length ? 'Íntegra' : r.thermal.breaches + ' desvíos' }}
-                </span>
-              </td>
-              <td>{{ r.status === 'DELIVERED' ? 'Entregado' : r.status === 'IN_TRANSIT' ? 'En ruta' : 'Cancelado' }}</td>
-              <td class="right"><button class="btn btn-ghost" (click)="export(r)"><app-icon name="download" [size]="16" /> Exportar</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <p *ngIf="error" class="empty">{{ error }}</p>
+        <p *ngIf="!error && loaded && reports().length === 0" class="empty">Todavía no hay envíos registrados.</p>
+
+        <div class="rows-head" *ngIf="reports().length" aria-hidden="true">
+          <span>Pedido</span><span>Temperatura registrada</span><span>Lecturas</span><span>Custodia</span><span>Estado</span><span></span>
+        </div>
+
+        <div *ngFor="let r of reports(); let i = index; trackBy: trackReport" class="row" [appReveal]="i">
+          <span class="c-id">
+            <span class="id"><i class="dot" [class.hot]="r.thermalMode === 'HOT'"></i>#{{ r.shipmentId }}</span>
+            <span class="addr">{{ r.customerAddress }}</span>
+          </span>
+          <span class="c-range">
+            <span class="range-bar" [attr.title]="'Rango permitido ' + r.minTemp + '–' + r.maxTemp + '°C'">
+              <span class="allowed" [style.left.%]="pos(r.minTemp)" [style.width.%]="pos(r.maxTemp) - pos(r.minTemp)"></span>
+              <span *ngIf="r.thermal.min !== null" class="seen" [class.bad]="!ok(r)" [style.left.%]="pos(r.thermal.min!)" [style.width.%]="max(1, pos(r.thermal.max!) - pos(r.thermal.min!))"></span>
+            </span>
+            <small>{{ r.thermal.min === null ? 'Sin lecturas' : r.thermal.min + '° – ' + r.thermal.max + '°' }}</small>
+          </span>
+          <span class="c-num">{{ r.thermal.readings }}</span>
+          <span class="c-state" [class.bad]="!ok(r)">{{ ok(r) ? 'Íntegra' : r.thermal.breaches + ' desvíos' }}</span>
+          <span class="c-status">{{ r.status === 'DELIVERED' ? 'Entregado' : r.status === 'IN_TRANSIT' ? 'En ruta' : 'Cancelado' }}</span>
+          <button class="icon-btn" type="button" (click)="export(r)" [attr.aria-label]="'Exportar reporte de ' + r.shipmentId" title="Exportar reporte">
+            <app-icon name="download" [size]="17" />
+          </button>
+        </div>
+      </section>
     </div>
   `,
   styles: [`
-    .hist-container { display: flex; flex-direction: column; gap: 20px; }
-    .hist-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .section-title { margin: 0; font-family: var(--font-display); font-size: 22px; }
-    .section-sub { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
-    .hist-card { padding: 0; overflow-x: auto; }
-    .hist-table { width: 100%; border-collapse: collapse; min-width: 860px; }
-    .hist-table th, .hist-table td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--line); font-size: 14px; }
-    .hist-table th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
-    .mono { font-family: var(--font-display); font-weight: 600; }
-    .right { text-align: right !important; }
-    .hist-empty { padding: 24px; color: var(--muted); }
-    .hist-error { color: var(--danger-strong); }
+    .page { display: flex; flex-direction: column; gap: 18px; }
+    .summary { display: grid; grid-template-columns: auto 1fr; gap: 40px; align-items: center; padding: 24px 28px; }
+    .big { display: flex; flex-direction: column; }
+    .big-num { font-size: 64px; font-weight: 500; line-height: .95; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+    .big-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .stat { display: flex; flex-direction: column; gap: 6px; padding: 4px 24px; border-left: 1px solid var(--line); }
+    .stat-label { font-size: 13px; color: var(--muted); }
+    .stat-val { font-size: 28px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+    .list { padding: 6px 0; }
+    .list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 22px 12px; }
+    h3 { font-size: 17px; font-weight: 600; }
+    .btn-xs { height: 34px; padding: 0 14px; font-size: 13px; }
+    .empty { padding: 28px 22px; color: var(--muted); font-size: 14px; }
+
+    .rows-head, .row { display: grid; grid-template-columns: minmax(170px, 1.6fr) 1.6fr 0.6fr 0.9fr 0.8fr 40px; gap: 14px; align-items: center; padding: 0 22px; }
+    .rows-head { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .row { min-height: 66px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
+    .row:last-of-type { border-bottom: 0; }
+    .c-id { display: flex; flex-direction: column; min-width: 0; }
+    .id { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; color: var(--ink); }
+    .addr { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 16px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cold); }
+    .dot.hot { background: var(--hot); }
+    .c-range { display: flex; flex-direction: column; gap: 6px; }
+    .c-range small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .range-bar { position: relative; height: 8px; border-radius: 4px; background: var(--bg-alt); max-width: 220px; }
+    .allowed { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: #D9E2EC; }
+    .seen { position: absolute; top: 1px; bottom: 1px; border-radius: 4px; background: var(--cold); }
+    .seen.bad { background: var(--hot); }
+    .c-num { font-variant-numeric: tabular-nums; }
+    .c-state { color: var(--muted); }
+    .c-state.bad { color: var(--hot-strong); font-weight: 600; }
+    .icon-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--white); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; transition: all .2s ease; }
+    .icon-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+    @media (max-width: 760px) {
+      .summary { grid-template-columns: 1fr; gap: 18px; padding: 20px; }
+      .big-num { font-size: 52px; }
+      .stat { padding: 2px 14px; }
+      .stat:first-child { border-left: 0; padding-left: 0; }
+      .stat-val { font-size: 22px; }
+      .rows-head { display: none; }
+      .list-head { padding: 12px 16px; }
+      .row { grid-template-columns: 1fr auto; grid-template-areas: 'id act' 'range state'; row-gap: 8px; padding: 14px 16px; }
+      .c-id { grid-area: id; }
+      .icon-btn { grid-area: act; }
+      .c-range { grid-area: range; }
+      .c-state { grid-area: state; justify-self: end; }
+      .c-num, .c-status { display: none; }
+    }
   `]
 })
 export class HistoryComponent implements OnInit {
   private telemetry = inject(TelemetryService);
 
   reports = signal<AuditReport[]>([]);
+  delivered = computed(() => this.reports().filter(r => r.status === 'DELIVERED').length);
+  withBreaches = computed(() => this.reports().filter(r => !this.ok(r)).length);
+  integrity = computed(() => {
+    const withData = this.reports().filter(r => r.thermal.readings > 0);
+    return withData.length ? Math.round((withData.filter(r => this.ok(r)).length / withData.length) * 100) + '%' : '—';
+  });
+
+  /** Escala común 0–90 °C para comparar rangos. */
+  pos = (t: number) => Math.min(100, Math.max(0, (t / 90) * 100));
+  max = Math.max;
+  ok = (r: AuditReport) => r.thermal.compliant && !r.thermalAlerts.length;
+  trackReport = (_: number, r: AuditReport) => r.shipmentId;
   loaded = false;
   error = '';
 
