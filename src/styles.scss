@@ -4,13 +4,13 @@
 
 :root {
   /* Paleta cromática principal */
-  --hot: #FF6B3D;
-  --hot-strong: #E55225;
-  --hot-bg: rgba(255, 107, 61, 0.12);
+  --hot: #FD5701;
+  --hot-strong: #E04A00;
+  --hot-bg: rgba(253, 87, 1, 0.10);
 
-  --cold: #1E88E5;
-  --cold-strong: #0D47A1;
-  --cold-bg: rgba(30, 136, 229, 0.12);
+  --cold: #38BDF8;
+  --cold-strong: #0284C7;
+  --cold-bg: rgba(56, 189, 248, 0.14);
 
   --ok: #10B981;
   --ok-strong: #047857;
@@ -27,27 +27,27 @@
   --ink: #0E1726;
   --ink-2: #243044;
   --muted: #64748B;
-  --line: #E3E8EF;
-  --bg-alt: #EEF1F5;
-  --bg: #F8FAFC;
+  --line: #E8ECF2;
+  --bg-alt: #F0F3F7;
+  --bg: #F5F7FA;
   --white: #FFFFFF;
   --sidebar-bg: #0E1726;
   --sidebar-hover: rgba(255, 255, 255, 0.08);
   --sidebar-active: rgba(255, 107, 61, 0.15);
 
   /* Tipografía */
-  --font-display: 'Space Grotesk', -apple-system, sans-serif;
-  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-display: 'Poppins', -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Poppins', -apple-system, 'Segoe UI', sans-serif;
 
   /* Formas y bordes */
   --radius-pill: 999px;
-  --radius-card: 16px;
+  --radius-card: 20px;
   --radius-input: 10px;
   --radius-sm: 8px;
 
   /* Sombras */
-  --shadow-card: 0 8px 24px -10px rgba(14, 23, 38, 0.14);
-  --shadow-sm: 0 2px 8px rgba(14, 23, 38, 0.06);
+  --shadow-card: 0 16px 40px -18px rgba(14, 23, 38, 0.18);
+  --shadow-sm: 0 1px 2px rgba(14, 23, 38, 0.04), 0 4px 16px -6px rgba(14, 23, 38, 0.06);
 }
 
 /* Reset y base */
@@ -99,14 +99,24 @@ h1, h2, h3, .font-display {
   }
 }
 
-.btn-primary {
+.btn-primary,
+.btn-dark {
+  background-color: var(--ink);
+  color: var(--white);
+  box-shadow: 0 8px 18px -10px rgba(14, 23, 38, 0.6);
+
+  &:hover:not(:disabled) {
+    background-color: #1F2A3D;
+    transform: translateY(-1px);
+  }
+}
+
+.btn-accent {
   background-color: var(--hot);
   color: var(--white);
-  box-shadow: 0 4px 12px rgba(255, 107, 61, 0.25);
 
   &:hover:not(:disabled) {
     background-color: var(--hot-strong);
-    transform: translateY(-1px);
   }
 }
 
@@ -140,65 +150,110 @@ h1, h2, h3, .font-display {
   }
 }
 
-/* Chips de estado accesibles (Color + Ícono + Texto) */
+/* Chips de estado: neutros, el color solo en un punto (diseño limpio) */
 .status-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background-color: var(--white);
+  color: var(--ink-2);
   font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
 
-  .chip-dot {
-    width: 7px;
-    height: 7px;
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
+    background-color: var(--muted);
+    flex: none;
   }
 
-  &.chip-hot {
-    background-color: var(--hot-bg);
-    color: var(--hot-strong);
-    .chip-dot { background-color: var(--hot); }
-  }
+  .chip-dot { display: none; }
 
-  &.chip-cold {
-    background-color: var(--cold-bg);
-    color: var(--cold-strong);
-    .chip-dot { background-color: var(--cold); }
-  }
-
-  &.chip-ok {
-    background-color: var(--ok-bg);
-    color: var(--ok-strong);
-    .chip-dot { background-color: var(--ok); }
-  }
-
-  &.chip-warn {
-    background-color: var(--warn-bg);
-    color: var(--warn-strong);
-    .chip-dot { background-color: var(--warn); }
-  }
-
-  &.chip-danger {
-    background-color: var(--danger-bg);
-    color: var(--danger-strong);
-    .chip-dot { background-color: var(--danger); }
-  }
-
-  &.chip-neutral {
-    background-color: var(--bg-alt);
-    color: var(--ink-2);
-    .chip-dot { background-color: var(--muted); }
-  }
+  &.chip-hot::before { background-color: var(--hot); }
+  &.chip-cold::before { background-color: var(--cold); }
+  &.chip-ok::before { background-color: var(--ok); }
+  &.chip-warn::before { background-color: var(--warn); }
+  &.chip-danger { color: var(--danger-strong); &::before { background-color: var(--danger); } }
+  &.chip-neutral::before { background-color: var(--muted); }
 }
 
 /* Tarjeta estándar */
 .card {
   background-color: var(--white);
   border-radius: var(--radius-card);
-  border: 1px solid var(--line);
+  border: 1px solid rgba(232, 236, 242, 0.7);
   padding: 24px;
   box-shadow: var(--shadow-sm);
 }
+
+/* ---------- Pulido visual (ui-ux-pro-max): interacción, foco y movimiento ---------- */
+:focus-visible {
+  outline: 2px solid var(--hot);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+button,
+a,
+select,
+[role='button'],
+[role='radio'] {
+  cursor: pointer;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.card {
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+
+  &:hover {
+    box-shadow: var(--shadow-card);
+    border-color: #d5dce6;
+  }
+}
+
+/* Cifras alineadas para que la telemetría no "salte" al actualizarse */
+.temp-num,
+.reading-value,
+.log-temp,
+.kpi-value,
+td,
+.font-display {
+  font-variant-numeric: tabular-nums;
+}
+
+tbody tr {
+  transition: background-color 0.18s ease;
+
+  &:hover {
+    background-color: rgba(14, 23, 38, 0.025);
+  }
+}
+
+::selection {
+  background: var(--hot-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Tipografía estilo referencia: títulos geométricos y cifras destacadas */
+h1, h2, h3 { letter-spacing: -0.02em; }
+body { font-size: 14px; }

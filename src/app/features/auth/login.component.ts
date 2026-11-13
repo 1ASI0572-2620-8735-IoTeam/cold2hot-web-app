@@ -1,3 +1,4 @@
+import { IconComponent } from '../../shared/icon.component';
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,38 +8,41 @@ import { TranslationService } from '../../core/services/translation.service';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="login-wrapper">
       <!-- Columna Izquierda: Branding y propuesta de valor (Figma W01) -->
       <div class="login-brand-panel">
         <div class="brand-header">
           <div class="logo-box">
-            <span class="logo-icon">🔥❄️</span>
-            <span class="brand-title">Cold2Hot</span>
+            <img class="brand-icon" src="brand/icon.png" alt="" width="44" height="44" />
+            <span class="brand-word"><span class="w-cold">C</span><span class="w-two">2</span><span class="w-hot">H</span></span>
           </div>
           <div class="brand-badge">IoT Platform</div>
         </div>
 
         <div class="brand-content">
           <h1 class="brand-hero-title">
-            Custodia térmica inteligente en cada kilómetro.
+            Custodia térmica inteligente en <span class="grad">cada kilómetro.</span>
           </h1>
           <p class="brand-hero-desc">
             {{ t('login_tagline') }}
           </p>
 
+          <!-- Ilustración opcional: se muestra solo si existe public/brand/login-hero.png -->
+          <img class="hero-illustration" src="brand/login-hero.png" alt="" (error)="$any($event.target).remove()" />
+
           <div class="features-list">
             <div class="feature-item">
-              <span class="feature-check">✓</span>
+              <span class="feature-check fc-1"><app-icon name="thermometer" [size]="18" /></span>
               <span>{{ t('login_feature_1') }}</span>
             </div>
             <div class="feature-item">
-              <span class="feature-check">✓</span>
+              <span class="feature-check fc-2"><app-icon name="lock" [size]="18" /></span>
               <span>{{ t('login_feature_2') }}</span>
             </div>
             <div class="feature-item">
-              <span class="feature-check">✓</span>
+              <span class="feature-check fc-3"><app-icon name="shield" [size]="18" /></span>
               <span>{{ t('login_feature_3') }}</span>
             </div>
           </div>
@@ -53,30 +57,36 @@ import { TranslationService } from '../../core/services/translation.service';
       <div class="login-form-panel">
         <div class="login-card">
           <div class="form-header">
-            <h2 class="form-title">{{ t('login_title') }}</h2>
-            <p class="form-desc">Ingresa tus credenciales de administrador</p>
+            <h2 class="form-title">{{ mode === 'login' ? t('login_title') : mode === 'register' ? 'Crear cuenta de restaurante' : mode === 'forgot' ? 'Recuperar contraseña' : 'Nueva contraseña' }}</h2>
+            <p class="form-desc" *ngIf="mode === 'login'">Ingresa tus credenciales de administrador</p>
           </div>
 
           <form (ngSubmit)="onSubmit()" class="auth-form">
-            <div class="form-group">
-              <label for="email">{{ t('login_email') }}</label>
+            <div class="form-group" *ngIf="mode === 'register'">
+              <label for="restaurant">Nombre del restaurante</label>
               <div class="input-wrapper">
-                <input
-                  id="email"
-                  type="email"
-                  [(ngModel)]="email"
-                  name="email"
-                  required
-                  placeholder="admin@mirestaurante.pe"
-                  class="custom-input"
-                />
+                <input id="restaurant" type="text" [(ngModel)]="restaurantName" name="restaurant" required placeholder="La Pérgola" class="custom-input" />
               </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" *ngIf="mode !== 'reset'">
+              <label for="email">{{ t('login_email') }}</label>
+              <div class="input-wrapper">
+                <input id="email" type="email" [(ngModel)]="email" name="email" required placeholder="admin@mirestaurante.pe" class="custom-input" />
+              </div>
+            </div>
+
+            <div class="form-group" *ngIf="mode === 'reset'">
+              <label for="token">Código de recuperación</label>
+              <div class="input-wrapper">
+                <input id="token" type="text" [(ngModel)]="resetToken" name="token" required class="custom-input" />
+              </div>
+            </div>
+
+            <div class="form-group" *ngIf="mode !== 'forgot'">
               <div class="label-row">
-                <label for="password">{{ t('login_password') }}</label>
-                <a href="#" class="forgot-link" (click)="$event.preventDefault()">{{ t('login_forgot') }}</a>
+                <label for="password">{{ mode === 'reset' ? 'Nueva contraseña' : t('login_password') }}</label>
+                <a href="#" class="forgot-link" *ngIf="mode === 'login'" (click)="$event.preventDefault(); setMode('forgot')">{{ t('login_forgot') }}</a>
               </div>
               <div class="input-wrapper">
                 <input
@@ -85,29 +95,32 @@ import { TranslationService } from '../../core/services/translation.service';
                   [(ngModel)]="password"
                   name="password"
                   required
+                  [attr.minlength]="mode === 'login' ? null : 8"
                   placeholder="••••••••"
                   class="custom-input"
                 />
-                <button
-                  type="button"
-                  class="toggle-pwd-btn"
-                  (click)="showPassword = !showPassword"
-                >
+                <button type="button" class="toggle-pwd-btn" (click)="showPassword = !showPassword">
                   {{ showPassword ? 'Ocultar' : 'Mostrar' }}
                 </button>
               </div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-submit">
-              {{ t('login_submit') }}
+            <p *ngIf="error" class="msg msg-error" role="alert">{{ error }}</p>
+            <p *ngIf="info" class="msg msg-ok">{{ info }}</p>
+
+            <button type="submit" class="btn btn-primary btn-submit" [disabled]="loading">
+              {{ mode === 'login' ? t('login_submit') : mode === 'register' ? 'Registrar restaurante' : mode === 'forgot' ? 'Enviar instrucciones' : 'Restablecer contraseña' }}
             </button>
 
-            <button
-              type="button"
-              class="btn btn-secondary btn-demo"
-              (click)="loginDemo()"
-            >
+            <button *ngIf="mode === 'login'" type="button" class="btn btn-secondary btn-demo" [disabled]="loading" (click)="loginDemo()">
               {{ t('login_demo') }}
+            </button>
+
+            <button *ngIf="mode === 'login'" type="button" class="btn btn-ghost btn-demo" (click)="setMode('register')">
+              ¿Primera vez? Registra tu restaurante
+            </button>
+            <button *ngIf="mode !== 'login'" type="button" class="btn btn-ghost btn-demo" (click)="setMode('login')">
+              Volver a iniciar sesión
             </button>
           </form>
         </div>
@@ -115,6 +128,13 @@ import { TranslationService } from '../../core/services/translation.service';
     </div>
   `,
   styles: [`
+    .brand-logo { width: 170px; height: auto; display: block; }
+    .form-logo { display: none; }
+
+    .msg { font-size: 13px; margin: 0; padding: 10px 12px; border-radius: var(--radius-sm); }
+    .msg-error { background: var(--danger-bg); color: var(--danger-strong); }
+    .msg-ok { background: var(--ok-bg); color: var(--ok-strong); }
+
     .login-wrapper {
       display: grid;
       grid-template-columns: 1.1fr 1fr;
@@ -144,7 +164,7 @@ import { TranslationService } from '../../core/services/translation.service';
         right: -100px;
         width: 350px;
         height: 350px;
-        background: radial-gradient(circle, rgba(255,107,61,0.2) 0%, rgba(14,23,38,0) 70%);
+        background: none;
         pointer-events: none;
       }
 
@@ -358,12 +378,55 @@ import { TranslationService } from '../../core/services/translation.service';
     .btn-demo {
       width: 100%;
     }
+
+    /* ---- Rediseño claro (referencia visual + paleta del logo) ---- */
+    .login-brand-panel {
+      position: relative;
+      overflow: hidden;
+      background: #F2FAFF !important;
+      color: var(--ink) !important;
+      border-right: 1px solid var(--line);
+    }
+    .login-brand-panel::before,
+    .login-brand-panel::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .login-brand-panel::before { width: 360px; height: 360px; right: -120px; top: -100px; background: rgba(56,189,248,.12); }
+    .login-brand-panel::after { width: 420px; height: 420px; top: auto; right: auto; left: -160px; bottom: -180px; background: rgba(253,87,1,.08); }
+    .login-brand-panel > * { position: relative; z-index: 1; }
+    .logo-box { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 44px; height: 44px; object-fit: contain; }
+    .brand-word { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+    .w-cold { color: var(--cold); }
+    .w-two { color: #0E1726; }
+    .w-hot { color: var(--hot); }
+    .brand-badge { background: var(--white) !important; color: var(--cold-strong) !important; border: 1px solid rgba(56,189,248,.35); }
+    .brand-hero-title { color: var(--ink) !important; font-weight: 700; letter-spacing: -0.03em; }
+    .grad { color: var(--hot); }
+    .brand-hero-desc { color: var(--muted) !important; }
+    .feature-item { color: var(--ink-2) !important; font-weight: 500; }
+    .feature-check { width: 36px !important; height: 36px !important; border-radius: 12px !important; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+    .fc-1 { background: var(--hot-bg) !important; color: var(--hot) !important; }
+    .fc-2 { background: var(--cold-bg) !important; color: var(--cold-strong) !important; }
+    .fc-3 { background: var(--ok-bg) !important; color: var(--ok-strong) !important; }
+    .brand-footer { color: var(--muted) !important; }
+    .login-form-panel { background: var(--white); }
+    .hero-illustration { display: block; width: min(380px, 80%); height: auto; margin: 8px 0 4px; }
   `]
 })
 export class LoginComponent {
-  email = 'admin@mirestaurante.pe';
-  password = 'password123';
+  mode: 'login' | 'register' | 'forgot' | 'reset' = 'login';
+  email = '';
+  password = '';
+  restaurantName = '';
+  resetToken = '';
   showPassword = false;
+  loading = false;
+  error = '';
+  info = '';
 
   constructor(
     private authService: AuthService,
@@ -374,11 +437,55 @@ export class LoginComponent {
     return this.translationService.translate(key);
   }
 
-  onSubmit() {
-    this.authService.login(this.email, this.password);
+  setMode(mode: 'login' | 'register' | 'forgot' | 'reset') {
+    this.mode = mode;
+    this.error = '';
+    this.info = '';
+    this.password = '';
+  }
+
+  async onSubmit() {
+    this.loading = true;
+    this.error = '';
+    this.info = '';
+    if (this.mode === 'login') {
+      const res = await this.authService.login(this.email, this.password);
+      if (!res.ok) this.error = res.error || 'No se pudo iniciar sesión';
+    } else if (this.mode === 'register') {
+      const res = await this.authService.register(this.restaurantName, this.email, this.password);
+      if (res.ok) {
+        this.setMode('login');
+        this.info = 'Restaurante registrado. Ya puedes iniciar sesión.';
+      } else {
+        this.error = res.error || 'No se pudo registrar';
+      }
+    } else if (this.mode === 'forgot') {
+      const res = await this.authService.forgotPassword(this.email);
+      if (!res.ok) {
+        this.error = res.error || 'No se pudo procesar la solicitud';
+      } else if (res.devResetToken) {
+        // Entorno sin servidor de correo: el backend devuelve el código directamente.
+        this.resetToken = res.devResetToken;
+        this.setMode('reset');
+        this.info = 'Código de recuperación generado (entorno de desarrollo). Ingresa tu nueva contraseña.';
+      } else {
+        this.info = 'Si el correo existe, se enviaron instrucciones para restablecer la contraseña.';
+      }
+    } else {
+      const res = await this.authService.resetPassword(this.resetToken, this.password);
+      if (res.ok) {
+        this.setMode('login');
+        this.info = 'Contraseña actualizada. Inicia sesión con tu nueva contraseña.';
+      } else {
+        this.error = res.error || 'No se pudo restablecer la contraseña';
+      }
+    }
+    this.loading = false;
   }
 
   loginDemo() {
-    this.authService.login('admin@mirestaurante.pe', 'demo1234');
+    this.email = 'admin@mirestaurante.pe';
+    this.password = 'password123';
+    this.onSubmit();
   }
 }

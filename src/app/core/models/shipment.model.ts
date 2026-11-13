@@ -14,7 +14,8 @@ export interface Shipment {
   thermalMode: ThermalMode;
   targetMinTemp: number;
   targetMaxTemp: number;
-  currentTemp: number;
+  /** Última lectura del sensor; null mientras la SmartBox no haya reportado. */
+  currentTemp: number | null;
   thermalStatus: ThermalStatus;
   operatorName: string;
   smartBoxId: string;
@@ -31,18 +32,55 @@ export interface SmartBox {
   serialNumber: string;
   macAddress: string;
   batteryLevel: number;
-  status: 'AVAILABLE' | 'IN_TRANSIT' | 'MAINTENANCE';
+  status: 'AVAILABLE' | 'IN_TRANSIT' | 'MAINTENANCE' | 'DECOMMISSIONED';
   assignedShipmentId?: string;
   lastHeartbeat: string;
 }
 
+export type AlertSource = 'telemetry' | 'security' | 'containers';
+
 export interface AlertItem {
   id: string;
+  source: AlertSource;
   shipmentId: string;
   smartBoxId: string;
   type: 'TEMP_BREACH' | 'LID_OPEN' | 'UNAUTHORIZED_ACCESS' | 'LOW_BATTERY';
-  severity: 'WARNING' | 'CRITICAL';
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
   message: string;
   timestamp: string;
   resolved: boolean;
+  /** Datos de desvío térmico (solo TEMP_BREACH). */
+  temperature?: number;
+  minTemp?: number;
+  maxTemp?: number;
+}
+
+export interface AuditReport {
+  shipmentId: string;
+  customerAddress: string;
+  thermalMode: ThermalMode;
+  minTemp: number;
+  maxTemp: number;
+  smartBoxId: string;
+  operatorName: string;
+  status: 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
+  otpCode: string;
+  createdAt: string;
+  deliveredAt: string | null;
+  thermal: { readings: number; min: number | null; max: number | null; average: number | null; breaches: number; compliant: boolean };
+  accessAttempts: { action: string; result: string; timestamp: string }[];
+  tamperEvents: { lidOpen: boolean; authorized: boolean | null; forced: boolean; timestamp: string }[];
+  /** Foto de entrega (data URL o URL); null si aún no se sincroniza. */
+  evidence: { photo: string; uploadedAt: string } | null;
+  thermalAlerts: { message: string; severity: string; timestamp: string; resolved: boolean }[];
+}
+
+export interface Operator {
+  operatorId: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  status: 'ACTIVE' | 'INVITED' | 'INACTIVE';
+  completedDeliveries: number;
+  custodyRating: number | null;
 }

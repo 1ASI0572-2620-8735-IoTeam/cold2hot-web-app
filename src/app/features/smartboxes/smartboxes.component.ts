@@ -1,5 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { RevealDirective } from '../../shared/reveal.directive';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { TranslationService } from '../../core/services/translation.service';
 import { TelemetryService } from '../../core/services/telemetry.service';
 import { SmartBox } from '../../core/models/shipment.model';
@@ -7,7 +10,7 @@ import { SmartBox } from '../../core/models/shipment.model';
 @Component({
   selector: 'app-smartboxes',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule, RouterModule, RevealDirective],
   template: `
     <div class="smartboxes-container">
       <div class="smartboxes-header">
@@ -15,13 +18,21 @@ import { SmartBox } from '../../core/models/shipment.model';
           <h2 class="section-title">{{ t('boxes_title') }}</h2>
           <p class="section-sub">Parque de contenedores físicos y estado de microcontroladores ESP32 en ruta</p>
         </div>
-        <button class="btn btn-primary" (click)="registerBoxPrompt()">
+        <button class="btn btn-primary" (click)="showForm = !showForm">
           {{ t('boxes_register_btn') }}
         </button>
       </div>
 
+      <form *ngIf="showForm" class="card register-form" (ngSubmit)="registerBox()">
+        <input class="reg-input" name="serial" [(ngModel)]="serialNumber" placeholder="Número de serie (C2H-SN-0050)" required />
+        <input class="reg-input" name="mac" [(ngModel)]="macAddress" placeholder="MAC (A4:CF:12:9B:3E:10)" required />
+        <input class="reg-input" name="weight" type="number" min="1" [(ngModel)]="maxWeightKg" placeholder="Peso máx. (kg)" required />
+        <button class="btn btn-primary" type="submit" [disabled]="saving">Registrar caja</button>
+        <span *ngIf="formError" class="reg-error">{{ formError }}</span>
+      </form>
+
       <div class="boxes-grid">
-        <div *ngFor="let box of smartBoxes()" class="box-card card">
+        <a *ngFor="let box of page(); let i = index; trackBy: trackBox" [appReveal]="i" class="box-card card" [routerLink]="[box.id]">
           <div class="box-top">
             <div class="box-id-tag font-display">{{ box.id }}</div>
             <span
@@ -62,8 +73,11 @@ import { SmartBox } from '../../core/models/shipment.model';
             </div>
             <span class="heartbeat-text">Latido: {{ box.lastHeartbeat }}</span>
           </div>
-        </div>
+        </a>
       </div>
+      <button *ngIf="smartBoxes().length > shown()" type="button" class="btn btn-secondary more" (click)="shown.set(shown() + 24)">
+        Mostrar más ({{ smartBoxes().length - shown() }})
+      </button>
     </div>
   `,
   styles: [`
@@ -100,6 +114,7 @@ import { SmartBox } from '../../core/models/shipment.model';
     }
 
     .box-card {
+      color: inherit; text-decoration: none; cursor: pointer;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -194,6 +209,25 @@ import { SmartBox } from '../../core/models/shipment.model';
       color: var(--ink);
     }
 
+    .more { align-self: center; }
+    .register-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .reg-input {
+      flex: 1;
+      min-width: 180px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-input);
+      font-family: var(--font-body);
+    }
+    .reg-error { color: var(--danger-strong); font-size: 13px; width: 100%; }
+
     .heartbeat-text {
       color: var(--muted);
       font-size: 11px;
@@ -205,12 +239,37 @@ export class SmartBoxesComponent {
   private telemetryService = inject(TelemetryService);
 
   smartBoxes = this.telemetryService.smartBoxes;
+  shown = signal(24);
+  page = computed(() => this.smartBoxes().slice(0, this.shown()));
 
   t(key: string): string {
     return this.translationService.translate(key);
   }
 
-  registerBoxPrompt() {
-    alert('Función de emparejamiento con nuevo ESP32 NodeMCU disponible para registro.');
+  trackBox = (_: number, b: SmartBox) => b.id;
+
+  showForm = false;
+  serialNumber = '';
+  macAddress = '';
+  maxWeightKg = 8;
+  saving = false;
+  formError = '';
+
+  async registerBox() {
+    this.saving = true;
+    this.formError = '';
+    const res = await this.telemetryService.registerSmartBox({
+      serialNumber: this.serialNumber,
+      macAddress: this.macAddress,
+      maxWeightKg: Number(this.maxWeightKg)
+    });
+    this.saving = false;
+    if (res.ok) {
+      this.showForm = false;
+      this.serialNumber = '';
+      this.macAddress = '';
+    } else {
+      this.formError = res.error || 'No se pudo registrar la caja';
+    }
   }
 }

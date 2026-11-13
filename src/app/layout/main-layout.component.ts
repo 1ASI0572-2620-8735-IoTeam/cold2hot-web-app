@@ -1,484 +1,253 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
-import { TranslationService, Language } from '../core/services/translation.service';
+import { NavigationEnd, Router, RouterModule } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
+import { Language, TranslationService } from '../core/services/translation.service';
 import { AuthService } from '../core/services/auth.service';
 import { TelemetryService } from '../core/services/telemetry.service';
+import { IconComponent } from '../shared/icon.component';
+
+interface NavLink {
+  path: string;
+  label: string;
+  icon: string;
+}
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, IconComponent],
   template: `
-    <div class="app-layout">
-      <!-- SIDEBAR LATERAL (Figma W04: #0E1726) -->
-      <aside class="app-sidebar" aria-label="Navegación principal">
-        <div class="sidebar-header">
-          <div class="logo-container">
-            <span class="logo-emoji">🔥❄️</span>
-            <div class="logo-text">
-              <span class="brand-name">Cold2Hot</span>
-              <span class="brand-sub">IoT Custody</span>
-            </div>
-          </div>
-        </div>
-
-        <nav class="sidebar-nav">
-          <!-- SECCIÓN OPERACIÓN -->
-          <div class="nav-section-title">{{ t('nav_operation') }}</div>
-          
-          <a
-            routerLink="/dashboard/monitoring"
-            routerLinkActive="active"
-            class="nav-item"
-          >
-            <span class="nav-icon">📊</span>
-            <span class="nav-label">{{ t('nav_monitoring') }}</span>
+    <div class="shell">
+      <!-- BARRA SUPERIOR -->
+      <header class="topbar">
+        <div class="topbar-inner">
+          <a routerLink="/dashboard/monitoring" class="brand" aria-label="C2H, ir a Monitoreo">
+            <img src="brand/icon.png" alt="" class="brand-icon" width="34" height="34" />
+            <span class="brand-word"><span class="w-cold">C</span><span class="w-two">2</span><span class="w-hot">H</span></span>
           </a>
 
-          <a
-            routerLink="/dashboard/alerts"
-            routerLinkActive="active"
-            class="nav-item"
-          >
-            <span class="nav-icon">⚠️</span>
-            <span class="nav-label">{{ t('nav_alerts') }}</span>
-            <span class="alert-badge" *ngIf="criticalAlerts() > 0">{{ criticalAlerts() }}</span>
-          </a>
-
-          <!-- SECCIÓN AUDITORÍA -->
-          <div class="nav-section-title">{{ t('nav_audit') }}</div>
-          
-          <a
-            routerLink="/dashboard/smartboxes"
-            routerLinkActive="active"
-            class="nav-item"
-          >
-            <span class="nav-icon">📦</span>
-            <span class="nav-label">{{ t('nav_smartboxes') }}</span>
-          </a>
-
-          <!-- SECCIÓN ADMINISTRACIÓN -->
-          <div class="nav-section-title">{{ t('nav_admin') }}</div>
-
-          <a
-            href="#"
-            (click)="$event.preventDefault()"
-            class="nav-item nav-item-disabled"
-            title="Disponible en TB2"
-          >
-            <span class="nav-icon">👥</span>
-            <span class="nav-label">{{ t('nav_operators') }}</span>
-          </a>
-
-          <a
-            href="#"
-            (click)="$event.preventDefault()"
-            class="nav-item nav-item-disabled"
-            title="Disponible en TB2"
-          >
-            <span class="nav-icon">⚙️</span>
-            <span class="nav-label">{{ t('nav_settings') }}</span>
-          </a>
-        </nav>
-
-        <div class="sidebar-footer">
-          <div class="iot-status-badge">
-            <span class="live-pulse"></span>
-            <span>ESP32 Gateway: ONLINE</span>
-          </div>
-        </div>
-      </aside>
-
-      <!-- CONTENEDOR PRINCIPAL -->
-      <div class="app-main-content">
-        <!-- TOPBAR SUPERIOR -->
-        <header class="app-topbar">
-          <div class="topbar-left">
-            <h1 class="page-title">{{ t('nav_monitoring') }}</h1>
-            <span class="tag-version">Sprint 1 / TB1</span>
-          </div>
-
-          <div class="topbar-right">
-            <!-- Selector de Idioma (i18n: es_419 y en_US) -->
-            <div class="lang-selector" aria-label="Selector de idioma">
-              <button
-                type="button"
-                class="lang-btn"
-                [class.active]="currentLang() === 'es'"
-                (click)="setLang('es')"
-              >
-                ES
-              </button>
-              <span class="lang-divider">/</span>
-              <button
-                type="button"
-                class="lang-btn"
-                [class.active]="currentLang() === 'en'"
-                (click)="setLang('en')"
-              >
-                EN
-              </button>
-            </div>
-
-            <!-- Enlace al Sitio Comercial (Landing Page) -->
+          <nav class="nav" aria-label="Navegación principal">
             <a
-              [href]="landingPageUrl"
-              target="_blank"
-              class="landing-link-btn"
-              title="Ver sitio web comercial"
+              *ngFor="let l of links"
+              [routerLink]="l.path"
+              routerLinkActive="active"
+              class="nav-link"
             >
-              🌐 Sitio Web
+              <app-icon [name]="l.icon" [size]="18" />
+              <span>{{ t(l.label) }}</span>
+              <span *ngIf="l.icon === 'bell' && criticalAlerts() > 0" class="nav-badge">{{ criticalAlerts() }}</span>
             </a>
+          </nav>
 
-            <!-- Perfil del Administrador -->
-            <div class="user-profile">
-              <div class="user-avatar">AD</div>
-              <div class="user-meta">
-                <span class="user-name">{{ currentUser()?.name }}</span>
-                <span class="user-restaurant">{{ currentUser()?.restaurantName }}</span>
+          <div class="actions">
+            <label class="search" [class.focused]="searchFocused()">
+              <app-icon name="search" [size]="17" />
+              <input
+                type="search"
+                placeholder="Buscar envío, dirección o caja"
+                aria-label="Buscar envíos"
+                [value]="searchTerm()"
+                (input)="onSearch($any($event.target).value)"
+                (focus)="searchFocused.set(true)"
+                (blur)="searchFocused.set(false)"
+                (keydown.enter)="goToMonitoring()"
+              />
+            </label>
+
+            <div class="profile">
+              <button type="button" class="profile-btn" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()" aria-haspopup="menu">
+                <span class="avatar">{{ initials() }}</span>
+                <span class="profile-meta">
+                  <span class="profile-name">{{ currentUser()?.name }}</span>
+                  <span class="profile-sub">{{ currentUser()?.restaurantName }}</span>
+                </span>
+                <app-icon name="chevron" [size]="16" />
+              </button>
+
+              <div *ngIf="menuOpen()" class="menu" role="menu">
+                <div class="menu-lang" role="group" aria-label="Idioma">
+                  <button type="button" [class.on]="currentLang() === 'es'" (click)="setLang('es')">ES</button>
+                  <button type="button" [class.on]="currentLang() === 'en'" (click)="setLang('en')">EN</button>
+                </div>
+                <a role="menuitem" routerLink="/dashboard/settings" (click)="menuOpen.set(false)"><app-icon name="settings" [size]="17" /> {{ t('nav_settings') }}</a>
+                <a role="menuitem" [href]="landingPageUrl" target="_blank" rel="noopener"><app-icon name="globe" [size]="17" /> Sitio web</a>
+                <button role="menuitem" type="button" class="danger" (click)="logout()"><app-icon name="logout" [size]="17" /> {{ t('logout') }}</button>
               </div>
             </div>
-
-            <!-- Botón Salir -->
-            <button
-              type="button"
-              class="logout-icon-btn"
-              (click)="logout()"
-              title="Cerrar sesión"
-            >
-              ⎋
-            </button>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <!-- CONTENIDO DE PÁGINA -->
-        <main class="content-body">
-          <router-outlet></router-outlet>
-        </main>
-      </div>
+      <main class="content">
+        <div class="page-head">
+          <h1 class="page-title" [class.sr-only]="pageTitleKey() !== 'nav_monitoring'">{{ t(pageTitleKey()) }}</h1>
+          <span class="live" *ngIf="!connectionError()"><span class="live-dot"></span> En vivo · actualización cada 4 s</span>
+        </div>
+        <div *ngIf="connectionError()" class="conn-banner" role="alert">
+          <app-icon name="alert" [size]="18" /> {{ connectionError() }}
+        </div>
+        <router-outlet></router-outlet>
+      </main>
     </div>
   `,
   styles: [`
-    .app-layout {
-      display: grid;
-      grid-template-columns: 260px 1fr;
-      min-height: 100vh;
-      background-color: var(--bg);
+    .shell { min-height: 100vh; background: var(--bg); }
 
-      @media (max-width: 960px) {
-        grid-template-columns: 80px 1fr;
-      }
-    }
-
-    /* SIDEBAR */
-    .app-sidebar {
-      background-color: var(--sidebar-bg);
-      color: var(--white);
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid rgba(255, 255, 255, 0.08);
+    .topbar {
       position: sticky;
       top: 0;
-      height: 100vh;
+      z-index: 40;
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: saturate(160%) blur(14px);
+      -webkit-backdrop-filter: saturate(160%) blur(14px);
+      border-bottom: 1px solid var(--line);
     }
-
-    .sidebar-header {
-      padding: 24px 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .logo-container {
+    .topbar-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      height: 72px;
+      padding: 0 28px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 28px;
     }
 
-    .logo-emoji {
-      font-size: 24px;
-    }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; flex: none; }
+    .brand-icon { width: 34px; height: 34px; object-fit: contain; }
+    .brand-word { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; color: var(--ink); }
+    .w-cold { color: var(--cold); }
+    .w-two { color: #0E1726; }
+    .w-hot { color: var(--hot); }
 
-    .logo-text {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .brand-name {
-      font-family: var(--font-display);
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-    }
-
-    .brand-sub {
-      font-size: 10px;
-      color: #94A3B8;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .sidebar-nav {
-      flex: 1;
-      padding: 20px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      overflow-y: auto;
-    }
-
-    .nav-section-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: #64748B;
-      letter-spacing: 0.8px;
-      padding: 12px 12px 6px;
-      margin-top: 8px;
-    }
-
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 14px;
-      border-radius: var(--radius-sm);
-      color: #CBD5E1;
-      font-size: 14px;
-      font-weight: 500;
-      text-decoration: none;
-      transition: all 0.2s ease;
+    .nav { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+    .nav::-webkit-scrollbar { display: none; }
+    .nav-link {
       position: relative;
-
-      &:hover:not(.nav-item-disabled) {
-        background-color: var(--sidebar-hover);
-        color: var(--white);
-      }
-
-      &.active {
-        background-color: var(--sidebar-active);
-        color: var(--hot);
-        font-weight: 600;
-
-        &::before {
-          content: '';
-          position: absolute;
-          left: 0;
-          top: 8px;
-          bottom: 8px;
-          width: 3px;
-          background-color: var(--hot);
-          border-radius: 0 4px 4px 0;
-        }
-      }
-
-      &.nav-item-disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-      }
-    }
-
-    .nav-icon {
-      font-size: 16px;
-    }
-
-    .alert-badge {
-      margin-left: auto;
-      background-color: var(--danger);
-      color: var(--white);
-      font-size: 11px;
-      font-weight: bold;
-      padding: 2px 7px;
-      border-radius: var(--radius-pill);
-    }
-
-    .sidebar-footer {
-      padding: 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .iot-status-badge {
-      display: flex;
+      flex: none;
+      display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--ok);
-      background-color: rgba(16, 185, 129, 0.12);
-      padding: 6px 10px;
-      border-radius: var(--radius-pill);
-    }
-
-    .live-pulse {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: var(--ok);
-      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    }
-
-    /* TOPBAR */
-    .app-main-content {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-
-    .app-topbar {
-      height: 70px;
-      background-color: var(--white);
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 32px;
-      position: sticky;
-      top: 0;
-      z-index: 20;
-    }
-
-    .topbar-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .page-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .tag-version {
-      background-color: var(--bg-alt);
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: var(--radius-pill);
-    }
-
-    .topbar-right {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-
-    /* Selector de idioma i18n */
-    .lang-selector {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      background-color: var(--bg-alt);
-      padding: 4px 10px;
+      height: 40px;
+      padding: 0 16px;
       border-radius: var(--radius-pill);
       border: 1px solid var(--line);
-    }
-
-    .lang-btn {
-      background: none;
-      border: none;
-      font-family: var(--font-body);
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      cursor: pointer;
-      padding: 2px 4px;
-
-      &.active {
-        color: var(--hot);
-        font-weight: 700;
-      }
-    }
-
-    .lang-divider {
-      color: var(--line);
-      font-size: 12px;
-    }
-
-    .user-profile {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .user-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background-color: var(--ink);
-      color: var(--white);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .user-meta {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .user-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--ink);
-      line-height: 1.2;
-    }
-
-    .user-restaurant {
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .landing-link-btn {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
+      background: var(--white);
+      color: var(--ink-2);
+      font-weight: 500;
+      font-size: 14px;
       text-decoration: none;
-      padding: 6px 14px;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--line);
-      background-color: var(--white);
-      transition: all 0.2s ease;
-
-      &:hover {
-        color: var(--ink);
-        background-color: var(--bg-alt);
-        border-color: #CBD5E1;
-      }
+      white-space: nowrap;
+      transition: color .2s ease, background-color .2s ease;
+    }
+    .nav-link:hover { color: var(--ink); border-color: #CBD5E1; }
+    .nav-link.active { color: var(--white); background: var(--ink); border-color: var(--ink); font-weight: 600; }
+    .nav-badge {
+      min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+      background: var(--danger); color: #fff; font-size: 11px; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center;
     }
 
-    .logout-icon-btn {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 1px solid var(--line);
-      background-color: var(--white);
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      cursor: pointer;
-      transition: all 0.2s ease;
+    .actions { display: flex; align-items: center; gap: 12px; flex: none; }
 
-      &:hover {
-        background-color: var(--danger-bg);
-        color: var(--danger);
-        border-color: var(--danger);
-      }
+    .search {
+      display: flex; align-items: center; gap: 8px;
+      height: 42px; width: 240px; flex: none; padding: 0 16px;
+      border: 1px solid var(--line); border-radius: var(--radius-pill);
+      background: var(--white); color: var(--muted);
+      transition: border-color .2s ease, box-shadow .2s ease, width .25s ease;
+    }
+    .search.focused { border-color: var(--cold); box-shadow: 0 0 0 4px var(--cold-bg); }
+    .search input { border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; color: var(--ink); width: 100%; }
+    .search input::placeholder { color: #94A3B8; }
+
+    .icon-btn {
+      position: relative; width: 44px; height: 44px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--ink-2); transition: background-color .2s ease;
+    }
+    .icon-btn:hover { background: var(--bg-alt); }
+    .dot-badge {
+      position: absolute; top: 6px; right: 6px; min-width: 17px; height: 17px; padding: 0 4px;
+      border-radius: 9px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center; border: 2px solid #fff;
+    }
+    .divider { width: 1px; height: 28px; background: var(--line); }
+
+    .profile { position: relative; }
+    .profile-btn {
+      display: flex; align-items: center; gap: 10px; border: 0; background: transparent;
+      padding: 4px 8px 4px 4px; border-radius: var(--radius-pill); color: var(--muted); font: inherit;
+      transition: background-color .2s ease; min-height: 44px;
+    }
+    .profile-btn:hover { background: var(--bg-alt); }
+    .avatar {
+      width: 38px; height: 38px; border-radius: 50%; flex: none;
+      background: var(--cold-strong);
+      color: #fff; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center;
+    }
+    .profile-meta { display: flex; flex-direction: column; text-align: left; line-height: 1.2; }
+    .profile-name { color: var(--ink); font-weight: 600; font-size: 14px; }
+    .profile-sub { font-size: 12px; }
+
+    .menu {
+      position: absolute; right: 0; top: calc(100% + 8px); width: 230px; padding: 8px;
+      background: var(--white); border: 1px solid var(--line); border-radius: 16px;
+      box-shadow: 0 18px 40px -12px rgba(14, 23, 38, 0.25);
+      display: flex; flex-direction: column; gap: 2px;
+      animation: menu-in .18s ease-out;
+    }
+    @keyframes menu-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+    .menu a, .menu button {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+      color: var(--ink-2); text-decoration: none; font: inherit; font-size: 14px; border: 0; background: transparent; text-align: left;
+    }
+    .menu a:hover, .menu button:hover { background: var(--bg-alt); }
+    .menu .danger { color: var(--danger-strong); }
+    .menu-lang { display: flex; gap: 4px; padding: 4px; margin-bottom: 4px; background: var(--bg-alt); border-radius: 10px; }
+    .menu-lang button { flex: 1; justify-content: center; padding: 6px; font-weight: 600; color: var(--muted); }
+    .menu-lang button.on { background: var(--white); color: var(--ink); box-shadow: var(--shadow-sm); }
+
+    .content { max-width: 1440px; margin: 0 auto; padding: 28px 28px 48px; }
+    .page-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+    .page-title { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .page-head:has(.sr-only) { justify-content: flex-end; margin-bottom: 8px; }
+    .live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px var(--ok-bg); animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 7px transparent; } }
+    .conn-banner {
+      display: flex; align-items: center; gap: 10px; background: var(--danger-bg); color: var(--danger-strong);
+      padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; font-size: 14px;
     }
 
-    .content-body {
-      padding: 32px;
-      flex: 1;
+    @media (max-width: 1480px) {
+      .search { width: 44px; padding: 0; justify-content: center; }
+      .search input { display: none; }
+      .search.focused { width: 220px; padding: 0 14px; justify-content: flex-start; }
+      .search.focused input { display: block; }
+      .profile-meta { display: none; }
+    }
+    @media (max-width: 1240px) {
+      .topbar-inner { gap: 16px; padding: 0 20px; }
+      .nav { gap: 6px; }
+      .nav-link { padding: 0 12px; }
+      .nav-link app-icon { display: none; }
+    }
+    @media (max-width: 1040px) {
+      .topbar-inner { flex-wrap: wrap; height: auto; padding: 10px 16px 0; gap: 8px 16px; }
+      .actions { margin-left: auto; gap: 4px; }
+      .nav { order: 3; flex-basis: 100%; padding-bottom: 10px; }
+      .nav-link app-icon { display: inline-flex; }
+    }
+    @media (max-width: 860px) {
+      .topbar-inner { flex-wrap: wrap; height: auto; padding: 10px 16px 0; gap: 8px 16px; }
+      .actions { margin-left: auto; gap: 4px; }
+      .divider, .profile-btn app-icon { display: none; }
+      .brand-word { font-size: 18px; }
+      .nav { order: 3; flex-basis: 100%; padding-bottom: 8px; }
+      .content { padding: 20px 16px 40px; }
     }
   `]
 })
@@ -486,21 +255,68 @@ export class MainLayoutComponent {
   private translationService = inject(TranslationService);
   private authService = inject(AuthService);
   private telemetryService = inject(TelemetryService);
+  private router = inject(Router);
+
+  readonly links: NavLink[] = [
+    { path: '/dashboard/monitoring', label: 'nav_monitoring', icon: 'gauge' },
+    { path: '/dashboard/alerts', label: 'nav_alerts', icon: 'bell' },
+    { path: '/dashboard/history', label: 'nav_history', icon: 'history' },
+    { path: '/dashboard/smartboxes', label: 'nav_smartboxes', icon: 'package' },
+    { path: '/dashboard/operators', label: 'nav_operators', icon: 'users' }
+  ];
 
   currentUser = this.authService.currentUser;
   currentLang = this.translationService.currentLang;
   criticalAlerts = this.telemetryService.criticalAlertsCount;
+  connectionError = this.telemetryService.connectionError;
+  searchTerm = this.telemetryService.searchTerm;
+  searchFocused = signal(false);
+  menuOpen = signal(false);
+
+  initials = computed(() => {
+    const name = this.currentUser()?.name || '';
+    return name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('') || 'C2H';
+  });
+
+  private url = toSignal(
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd), map(() => this.router.url)),
+    { initialValue: this.router.url }
+  );
+  pageTitleKey = computed(() => {
+    const u = this.url();
+    if (u.includes('/alerts')) return 'nav_alerts';
+    if (u.includes('/history')) return 'nav_history';
+    if (u.includes('/smartboxes')) return 'nav_smartboxes';
+    if (u.includes('/operators')) return 'nav_operators';
+    if (u.includes('/settings')) return 'nav_settings';
+    return 'nav_monitoring';
+  });
 
   get landingPageUrl(): string {
-    if (typeof window !== 'undefined') {
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      return isLocal ? 'http://localhost:8000' : 'https://1asi0572-2620-8735-ioteam.github.io/cold2hot-landing-page/';
-    }
-    return 'https://1asi0572-2620-8735-ioteam.github.io/cold2hot-landing-page/';
+    const isLocal = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    return isLocal ? 'http://localhost:8000' : 'https://1asi0572-2620-8735-ioteam.github.io/cold2hot-landing-page/';
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeMenu(e: MouseEvent) {
+    if (this.menuOpen() && !(e.target as HTMLElement).closest('.profile')) this.menuOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape() {
+    this.menuOpen.set(false);
   }
 
   t(key: string): string {
     return this.translationService.translate(key);
+  }
+
+  onSearch(value: string) {
+    this.searchTerm.set(value);
+  }
+
+  goToMonitoring() {
+    if (!this.url().includes('/monitoring')) this.router.navigate(['/dashboard/monitoring']);
   }
 
   setLang(lang: Language) {
@@ -508,6 +324,7 @@ export class MainLayoutComponent {
   }
 
   logout() {
+    this.menuOpen.set(false);
     this.authService.logout();
   }
 }

@@ -1,4 +1,10 @@
+import { RevealDirective } from '../../shared/reveal.directive';
+import { IconComponent } from '../../shared/icon.component';
+import { TemperatureStripComponent } from './temperature-strip.component';
+import { CustodyOverviewComponent } from './custody-overview.component';
+import { FleetInsightsComponent } from './fleet-insights.component';
 import { Component, signal, computed, inject } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { TranslationService } from '../../core/services/translation.service';
 import { TelemetryService } from '../../core/services/telemetry.service';
@@ -8,219 +14,70 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
 @Component({
   selector: 'app-monitoring-dashboard',
   standalone: true,
-  imports: [CommonModule, NewShipmentModalComponent],
+  imports: [CommonModule, NewShipmentModalComponent, RevealDirective, IconComponent, CustodyOverviewComponent, FleetInsightsComponent, TemperatureStripComponent],
   template: `
     <div class="monitoring-container">
       
-      <!-- 1. TARJETAS DE MÉTRICAS KPI (Figma W04) -->
-      <section class="kpi-grid" aria-label="Resumen operativo">
-        <!-- KPI: Total Envíos -->
-        <div class="card kpi-card">
-          <div class="kpi-meta">
-            <span class="kpi-label">{{ t('kpi_total_active') }}</span>
-            <span class="kpi-value">{{ totalActive() }}</span>
+      <div class="dash-grid">
+      <div class="dash-main">
+
+      <app-temperature-strip />
+
+      <section class="list card" aria-label="Envíos en ruta">
+        <div class="list-head">
+          <h3 class="list-title">Envíos en ruta</h3>
+          <div class="seg" role="tablist" aria-label="Filtro">
+            <button type="button" role="tab" [class.on]="activeFilter() === 'ALL'" (click)="setFilter('ALL')">Todos <b>{{ shipments().length }}</b></button>
+            <button type="button" role="tab" [class.on]="activeFilter() === 'HOT'" (click)="setFilter('HOT')">Caliente</button>
+            <button type="button" role="tab" [class.on]="activeFilter() === 'COLD'" (click)="setFilter('COLD')">Frío</button>
+            <button type="button" role="tab" [class.on]="activeFilter() === 'BREACH'" (click)="setFilter('BREACH')">Fuera de rango</button>
           </div>
-          <div class="kpi-icon-box bg-blue">📦</div>
+          <button type="button" class="btn btn-dark btn-new" (click)="showNewShipmentModal = true">
+            <app-icon name="plus" [size]="17" /> Nuevo envío
+          </button>
         </div>
 
-        <!-- KPI: En Ruta -->
-        <div class="card kpi-card">
-          <div class="kpi-meta">
-            <span class="kpi-label">{{ t('kpi_in_transit') }}</span>
-            <span class="kpi-value">{{ inTransit() }}</span>
-          </div>
-          <div class="kpi-icon-box bg-orange">🛵</div>
-        </div>
-
-        <!-- KPI: Alertas Críticas -->
-        <div class="card kpi-card" [class.alert-glow]="criticalAlerts() > 0">
-          <div class="kpi-meta">
-            <span class="kpi-label">{{ t('kpi_critical_alerts') }}</span>
-            <span class="kpi-value text-danger">{{ criticalAlerts() }}</span>
-          </div>
-          <div class="kpi-icon-box bg-red">⚠️</div>
-        </div>
-
-        <!-- KPI: Cajas Disponibles -->
-        <div class="card kpi-card">
-          <div class="kpi-meta">
-            <span class="kpi-label">{{ t('kpi_boxes_available') }}</span>
-            <span class="kpi-value text-ok">{{ availableBoxes() }}</span>
-          </div>
-          <div class="kpi-icon-box bg-green">🔋</div>
-        </div>
-      </section>
-
-      <!-- 2. BARRA DE HERRAMIENTAS Y FILTROS -->
-      <section class="toolbar-section">
-        <div class="filter-pills" role="tablist">
-          <button
-            type="button"
-            class="filter-pill"
-            [class.active]="activeFilter() === 'ALL'"
-            (click)="setFilter('ALL')"
-          >
-            {{ t('filter_all') }} ({{ shipments().length }})
-          </button>
-          
-          <button
-            type="button"
-            class="filter-pill"
-            [class.active]="activeFilter() === 'HOT'"
-            (click)="setFilter('HOT')"
-          >
-            🔥 {{ t('filter_hot') }}
-          </button>
-
-          <button
-            type="button"
-            class="filter-pill"
-            [class.active]="activeFilter() === 'COLD'"
-            (click)="setFilter('COLD')"
-          >
-            ❄️ {{ t('filter_cold') }}
-          </button>
-
-          <button
-            type="button"
-            class="filter-pill filter-alert-pill"
-            [class.active]="activeFilter() === 'BREACH'"
-            (click)="setFilter('BREACH')"
-          >
-            ⚠️ {{ t('filter_alerts_only') }}
-          </button>
+        <div class="rows-head" aria-hidden="true">
+          <span>Pedido</span><span>Perfil</span><span>Temperatura</span><span>Caja</span><span>Cerrojo</span><span>Estado</span><span></span>
         </div>
 
         <button
           type="button"
-          class="btn btn-primary"
-          (click)="showNewShipmentModal = true"
+          class="row"
+          *ngFor="let s of pageShipments(); let i = index; trackBy: trackShipment"
+          [appReveal]="i"
+          (click)="selectShipmentForDetail(s)"
+          [attr.aria-label]="'Ver detalle de ' + s.id"
         >
-          {{ t('btn_new_shipment') }}
+          <span class="c-id">
+            <span class="id">{{ s.id }}</span>
+            <span class="addr">{{ s.customerAddress }}</span>
+          </span>
+          <span class="c-mode"><i class="dot" [class.hot]="s.thermalMode === 'HOT'"></i>{{ s.thermalMode === 'HOT' ? 'Caliente' : 'Frío' }}</span>
+          <span class="c-temp">
+            <strong [class.bad]="s.thermalStatus === 'BREACH'">{{ s.currentTemp === null ? '—' : s.currentTemp + '°' }}</strong>
+            <small>{{ s.targetMinTemp }}–{{ s.targetMaxTemp }}°</small>
+          </span>
+          <span class="c-box">{{ s.smartBoxId }}</span>
+          <span class="c-lock"><app-icon [name]="s.lockStatus === 'LOCKED' ? 'lock' : 'unlock'" [size]="15" />{{ s.lockStatus === 'LOCKED' ? 'Cerrado' : 'Abierto' }}</span>
+          <span class="c-state" [class.bad]="s.thermalStatus === 'BREACH'">{{ s.currentTemp === null ? 'Sin lectura' : s.thermalStatus === 'BREACH' ? 'Fuera de rango' : 'En rango' }}</span>
+          <span class="c-go" aria-hidden="true">↗</span>
         </button>
+
+        <button *ngIf="filteredShipments().length > shown()" type="button" class="more" (click)="shown.set(shown() + 25)">
+          Mostrar más ({{ filteredShipments().length - shown() }})
+        </button>
+
+        <p *ngIf="!filteredShipments().length" class="empty">No hay envíos para mostrar.</p>
       </section>
 
-      <!-- 3. TABLA DE MONITOREO EN TIEMPO REAL (Figma W04) -->
-      <section class="table-container card">
-        <div class="table-responsive">
-          <table class="monitoring-table" aria-label="Tabla de monitoreo térmico en vivo">
-            <thead>
-              <tr>
-                <th>{{ t('col_order_id') }}</th>
-                <th>{{ t('col_mode') }}</th>
-                <th>{{ t('col_temperature') }}</th>
-                <th>{{ t('col_operator') }}</th>
-                <th>{{ t('col_smartbox') }}</th>
-                <th>{{ t('col_lock') }}</th>
-                <th>{{ t('col_battery') }}</th>
-                <th>{{ t('col_status') }}</th>
-                <th class="text-right">{{ t('col_actions') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let s of filteredShipments()" [class.row-alert]="s.thermalStatus === 'BREACH'">
-                <!-- Pedido -->
-                <td>
-                  <div class="order-id-cell">
-                    <span class="order-id">{{ s.id }}</span>
-                    <span class="order-address">{{ s.customerAddress }}</span>
-                  </div>
-                </td>
+      <app-fleet-insights />
+      </div>
 
-                <!-- Modo Térmico -->
-                <td>
-                  <span
-                    class="status-chip"
-                    [ngClass]="s.thermalMode === 'HOT' ? 'chip-hot' : 'chip-cold'"
-                  >
-                    <span class="chip-dot"></span>
-                    {{ s.thermalMode === 'HOT' ? t('filter_hot') : t('filter_cold') }}
-                  </span>
-                </td>
-
-                <!-- Temperatura Actual vs Rango -->
-                <td>
-                  <div class="temp-cell">
-                    <div class="temp-header">
-                      <span class="temp-num font-display" [class.text-danger]="s.thermalStatus === 'BREACH'">
-                        {{ s.currentTemp }}°C
-                      </span>
-                      <span
-                        class="status-chip"
-                        [ngClass]="s.thermalStatus === 'OPTIMAL' ? 'chip-ok' : 'chip-danger'"
-                      >
-                        {{ s.thermalStatus === 'OPTIMAL' ? t('status_in_range') : t('status_out_of_range') }}
-                      </span>
-                    </div>
-                    <span class="temp-range">
-                      Objetivo: {{ s.targetMinTemp }}°C – {{ s.targetMaxTemp }}°C
-                    </span>
-                  </div>
-                </td>
-
-                <!-- Repartidor -->
-                <td>
-                  <div class="operator-cell">
-                    <span class="operator-avatar">{{ s.operatorName.slice(0, 2) }}</span>
-                    <span class="operator-name">{{ s.operatorName }}</span>
-                  </div>
-                </td>
-
-                <!-- SmartBox -->
-                <td>
-                  <span class="box-badge">{{ s.smartBoxId }}</span>
-                </td>
-
-                <!-- Cerrojo -->
-                <td>
-                  <div class="lock-cell">
-                    <span class="lock-icon">{{ s.lockStatus === 'LOCKED' ? '🔒' : '🔓' }}</span>
-                    <span class="lock-text">
-                      {{ s.lockStatus === 'LOCKED' ? t('status_locked') : t('status_unlocked') }}
-                    </span>
-                  </div>
-                </td>
-
-                <!-- Batería -->
-                <td>
-                  <div class="battery-cell">
-                    <div class="battery-bar-bg">
-                      <div
-                        class="battery-bar-fill"
-                        [style.width.%]="s.batteryLevel"
-                        [ngClass]="s.batteryLevel < 20 ? 'bg-danger' : s.batteryLevel < 50 ? 'bg-warn' : 'bg-ok'"
-                      ></div>
-                    </div>
-                    <span class="battery-text">{{ s.batteryLevel }}%</span>
-                  </div>
-                </td>
-
-                <!-- Estado -->
-                <td>
-                  <span
-                    class="status-chip"
-                    [ngClass]="s.status === 'CRITICAL' ? 'chip-danger' : 'chip-neutral'"
-                  >
-                    <span class="chip-dot"></span>
-                    {{ s.status === 'CRITICAL' ? t('status_critical') : t('status_in_transit') }}
-                  </span>
-                </td>
-
-                <!-- Acción Ver Trayecto -->
-                <td class="text-right">
-                  <button
-                    type="button"
-                    class="btn btn-secondary btn-sm"
-                    (click)="selectShipmentForDetail(s)"
-                  >
-                    {{ t('btn_view_track') }} ›
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <aside class="dash-side" aria-label="Resumen operativo">
+        <app-custody-overview />
+      </aside>
+      </div>
 
       <!-- 4. MODAL / DETALLE DE TRAYECTO TÉRMICO (Figma W05) -->
       <div *ngIf="selectedShipment" class="drawer-backdrop" (click)="selectedShipment = null">
@@ -231,7 +88,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
               <h2 class="drawer-title">{{ selectedShipment.id }}</h2>
               <p class="drawer-sub">{{ selectedShipment.customerAddress }}</p>
             </div>
-            <button class="drawer-close-btn" (click)="selectedShipment = null">✕</button>
+            <button class="drawer-close-btn" (click)="selectedShipment = null" aria-label="Cerrar detalle"><app-icon name="x" [size]="18" /></button>
           </div>
 
           <div class="drawer-body">
@@ -240,7 +97,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
               <div class="reading-meta">
                 <span class="reading-label">Temperatura actual del sensor DS18B20</span>
                 <div class="reading-value font-display" [class.text-danger]="selectedShipment.thermalStatus === 'BREACH'">
-                  {{ selectedShipment.currentTemp }}°C
+                  {{ selectedShipment.currentTemp ?? '--' }}°C
                 </div>
               </div>
               <div class="reading-badges">
@@ -250,8 +107,8 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
                 >
                   {{ selectedShipment.thermalStatus === 'OPTIMAL' ? t('status_in_range') : t('status_out_of_range') }}
                 </span>
-                <span class="status-chip chip-neutral">
-                  OTP: {{ selectedShipment.otpCode }}
+                <span *ngIf="otp() as o" class="status-chip chip-neutral" title="Código de apertura para soporte">
+                  OTP {{ o.code }} · {{ otpLabel(o.state) }}
                 </span>
               </div>
             </div>
@@ -289,7 +146,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
 
               <div class="chart-legend">
                 <span>Rango permitido: {{ selectedShipment.targetMinTemp }}°C - {{ selectedShipment.targetMaxTemp }}°C</span>
-                <span class="live-dot-text"><span class="pulse-dot"></span> Muestreo cada 4s</span>
+                <span class="live-dot-text"><span class="pulse-dot"></span> Actualización cada 4s</span>
               </div>
             </div>
 
@@ -312,7 +169,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
               style="width: 100%; margin-top: 10px;"
               (click)="exportAuditReport(selectedShipment)"
             >
-              📄 Descargar Reporte de Custodia
+              <app-icon name="download" [size]="18" /> Descargar reporte de custodia
             </button>
           </div>
         </aside>
@@ -333,286 +190,72 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
       gap: 28px;
     }
 
-    /* 1. KPI GRID */
-    .kpi-grid {
+    .dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
+    .dash-main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .dash-side { position: sticky; top: 92px; }
+    @media (max-width: 1180px) {
+      .dash-grid { grid-template-columns: 1fr; }
+      .dash-side { position: static; order: -1; }
+    }
+
+    /* Lista de envíos limpia y responsiva */
+    .list { padding: 6px 0 8px; }
+    .list-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 22px 12px; }
+    .list-title { font-size: 17px; font-weight: 600; margin-right: auto; }
+    .seg { display: inline-flex; gap: 4px; padding: 4px; background: var(--bg-alt); border-radius: 999px; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+    .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500; height: 34px; padding: 0 14px; border-radius: 999px; white-space: nowrap; transition: background .2s, color .2s; }
+    .seg button b { font-weight: 600; margin-left: 4px; }
+    .seg button.on { background: var(--white); color: var(--ink); box-shadow: var(--shadow-sm); }
+    .btn-new { height: 40px; padding: 0 18px; }
+
+    .rows-head, .row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
-    }
-
-    .kpi-card {
-      display: flex;
+      grid-template-columns: minmax(170px, 2.2fr) 1fr 1.1fr 0.9fr 1fr 1.2fr 32px;
       align-items: center;
-      justify-content: space-between;
-      padding: 20px 24px;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      gap: 12px;
+      padding: 0 22px;
+    }
+    .rows-head { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding-top: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .row {
+      width: 100%; min-height: 68px; border: 0; border-bottom: 1px solid var(--line); background: transparent;
+      font: inherit; text-align: left; color: var(--ink-2); font-size: 13px; transition: background-color .18s ease;
+    }
+    .row:last-of-type { border-bottom: 0; }
+    .row:hover { background: #FAFBFC; }
+    .row:hover .c-go { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .c-id { display: flex; flex-direction: column; min-width: 0; }
+    .id { font-weight: 600; color: var(--ink); font-size: 14px; }
+    .addr { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .c-mode { display: inline-flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cold); flex: none; }
+    .dot.hot { background: var(--hot); }
+    .c-temp { display: flex; align-items: baseline; gap: 6px; }
+    .c-temp strong { font-size: 17px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .c-temp strong.bad { color: var(--hot-strong); }
+    .c-temp small { font-size: 11px; color: var(--muted); }
+    .c-box { font-variant-numeric: tabular-nums; }
+    .c-lock { display: inline-flex; align-items: center; gap: 6px; }
+    .c-state { color: var(--muted); }
+    .c-state.bad { color: var(--hot-strong); font-weight: 600; }
+    .c-go { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); transition: all .2s ease; }
+    .more { display: block; margin: 12px auto 8px; border: 1px solid var(--line); background: var(--white); border-radius: 999px; height: 36px; padding: 0 18px; font: inherit; font-size: 13px; color: var(--ink-2); }
+    .more:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .empty { padding: 28px 22px; color: var(--muted); font-size: 14px; }
 
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px -8px rgba(14, 23, 38, 0.12);
+    @media (max-width: 760px) {
+      .rows-head { display: none; }
+      .list-head { padding: 14px 16px 10px; }
+      .btn-new { width: 100%; }
+      .row {
+        grid-template-columns: 1fr auto;
+        grid-template-areas: 'id temp' 'meta state';
+        row-gap: 6px; padding: 14px 16px;
       }
-
-      &.alert-glow {
-        border-color: var(--danger);
-        background-color: #FFF5F5;
-      }
-    }
-
-    .kpi-meta {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .kpi-label {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--muted);
-    }
-
-    .kpi-value {
-      font-family: var(--font-display);
-      font-size: 32px;
-      font-weight: 700;
-      color: var(--ink);
-      line-height: 1;
-
-      &.text-danger { color: var(--danger); }
-      &.text-ok { color: var(--ok); }
-    }
-
-    .kpi-icon-box {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-
-      &.bg-blue { background-color: var(--cold-bg); }
-      &.bg-orange { background-color: var(--hot-bg); }
-      &.bg-red { background-color: var(--danger-bg); }
-      &.bg-green { background-color: var(--ok-bg); }
-    }
-
-    /* 2. TOOLBAR */
-    .toolbar-section {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-
-    .filter-pills {
-      display: flex;
-      gap: 8px;
-      background-color: var(--bg-alt);
-      padding: 4px;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--line);
-    }
-
-    .filter-pill {
-      background: none;
-      border: none;
-      font-family: var(--font-body);
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-      padding: 8px 18px;
-      border-radius: var(--radius-pill);
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &:hover:not(.active) {
-        color: var(--ink);
-      }
-
-      &.active {
-        background-color: var(--white);
-        color: var(--ink);
-        box-shadow: 0 2px 6px rgba(14, 23, 38, 0.08);
-      }
-
-      &.filter-alert-pill.active {
-        color: var(--danger);
-      }
-    }
-
-    /* 3. TABLA */
-    .table-container {
-      padding: 0;
-      overflow: hidden;
-    }
-
-    .table-responsive {
-      overflow-x: auto;
-    }
-
-    .monitoring-table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 14px;
-
-      thead th {
-        background-color: #F8FAFC;
-        padding: 16px 20px;
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--muted);
-        border-bottom: 1px solid var(--line);
-      }
-
-      tbody tr {
-        border-bottom: 1px solid var(--line);
-        transition: background-color 0.15s ease;
-
-        &:hover {
-          background-color: #F8FAFC;
-        }
-
-        &.row-alert {
-          background-color: #FFF8F8;
-        }
-      }
-
-      tbody td {
-        padding: 16px 20px;
-        vertical-align: middle;
-      }
-    }
-
-    .text-right { text-align: right; }
-
-    .order-id-cell {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .order-id {
-      font-family: var(--font-display);
-      font-weight: 700;
-      color: var(--ink);
-      font-size: 15px;
-    }
-
-    .order-address {
-      font-size: 12px;
-      color: var(--muted);
-      max-width: 200px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .temp-cell {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .temp-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .temp-num {
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--ink);
-
-      &.text-danger { color: var(--danger); }
-    }
-
-    .temp-range {
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .operator-cell {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .operator-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background-color: var(--bg-alt);
-      color: var(--ink-2);
-      font-size: 11px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--line);
-    }
-
-    .operator-name {
-      font-weight: 500;
-      color: var(--ink);
-    }
-
-    .box-badge {
-      display: inline-block;
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 12px;
-      color: var(--ink-2);
-      background-color: var(--bg-alt);
-      padding: 3px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--line);
-    }
-
-    .lock-cell {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-    }
-
-    .battery-cell {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .battery-bar-bg {
-      width: 44px;
-      height: 8px;
-      background-color: var(--bg-alt);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .battery-bar-fill {
-      height: 100%;
-      border-radius: 4px;
-
-      &.bg-ok { background-color: var(--ok); }
-      &.bg-warn { background-color: var(--warn); }
-      &.bg-danger { background-color: var(--danger); }
-    }
-
-    .battery-text {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-    }
-
-    .btn-sm {
-      height: 34px;
-      padding: 0 16px;
-      font-size: 12px;
+      .c-id { grid-area: id; }
+      .c-temp { grid-area: temp; justify-self: end; }
+      .c-mode { grid-area: meta; }
+      .c-state { grid-area: state; justify-self: end; }
+      .c-box, .c-lock, .c-go { display: none; }
     }
 
     /* 4. DRAWER DETALLE (W05) */
@@ -815,12 +458,44 @@ export class MonitoringDashboardComponent {
   availableBoxes = this.telemetryService.availableBoxesCount;
 
   activeFilter = signal<'ALL' | 'HOT' | 'COLD' | 'BREACH'>('ALL');
-  selectedShipment: Shipment | null = null;
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private selectedId: string | null = null;
+
+  constructor() {
+    // Enlace directo desde otras vistas: /dashboard/monitoring?envio=C2H-10486 abre el detalle en vivo.
+    this.route.queryParamMap.subscribe(p => {
+      const id = p.get('envio');
+      if (id) {
+        this.selectedId = '#' + id.replace('#', '');
+        this.loadOtp();
+      }
+    });
+  }
+  /** Referencia viva al envío seleccionado: se actualiza con cada ciclo de polling. */
+  get selectedShipment(): Shipment | null {
+    return this.shipments().find(s => s.id === this.selectedId) ?? null;
+  }
+  set selectedShipment(s: Shipment | null) {
+    this.selectedId = s ? s.id : null;
+    this.loadOtp();
+    if (!s && this.route.snapshot.queryParamMap.has('envio')) {
+      this.router.navigate([], { queryParams: { envio: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    }
+  }
   showNewShipmentModal = false;
+
+  shown = signal(25);
+  pageShipments = computed(() => this.filteredShipments().slice(0, this.shown()));
 
   filteredShipments = computed(() => {
     const filter = this.activeFilter();
-    const list = this.shipments();
+    const q = this.telemetryService.searchTerm().trim().toLowerCase();
+    const list = q
+      ? this.shipments().filter(s =>
+          [s.id, s.customerAddress, s.operatorName, s.smartBoxId].some(v => v.toLowerCase().includes(q))
+        )
+      : this.shipments();
     if (filter === 'ALL') return list;
     if (filter === 'HOT') return list.filter(s => s.thermalMode === 'HOT');
     if (filter === 'COLD') return list.filter(s => s.thermalMode === 'COLD');
@@ -832,8 +507,18 @@ export class MonitoringDashboardComponent {
     return this.translationService.translate(key);
   }
 
+  trackShipment = (_: number, s: Shipment) => s.id;
+
   setFilter(filter: 'ALL' | 'HOT' | 'COLD' | 'BREACH') {
     this.activeFilter.set(filter);
+  }
+
+  otp = signal<{ code: string; state: 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED' } | null>(null);
+  otpLabel = (st: string) => (st === 'ACTIVE' ? 'vigente' : st === 'USED' ? 'usado' : st === 'EXPIRED' ? 'vencido' : 'revocado');
+
+  private async loadOtp() {
+    this.otp.set(null);
+    if (this.selectedId) this.otp.set(await this.telemetryService.otpFor(this.selectedId));
   }
 
   selectShipmentForDetail(shipment: Shipment) {
@@ -876,9 +561,8 @@ Dirección de Entrega: ${s.customerAddress}
 Caja SmartBox: ${s.smartBoxId}
 Operador Asignado: ${s.operatorName}
 Modo Térmico: ${s.thermalMode} (Rango admisible: ${s.targetMinTemp}°C - ${s.targetMaxTemp}°C)
-Temperatura Final Registrada: ${s.currentTemp}°C
+Temperatura Final Registrada: ${s.currentTemp ?? 'sin lecturas'}°C
 Estado de Custodia: ${s.thermalStatus === 'OPTIMAL' ? 'INTEGRIDAD VERIFICADA' : 'DESVÍO TÉRMICO DETECTADO'}
-Código OTP Utilizado: ${s.otpCode}
 Fecha de Emisión: ${new Date().toLocaleString()}
 
 HISTORIAL DE LECTURAS DS18B20 EN RUTA:
