@@ -2,6 +2,7 @@ import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslationService } from '../../core/services/translation.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { TelemetryService } from '../../core/services/telemetry.service';
 import { ThermalMode } from '../../core/models/shipment.model';
 
@@ -412,8 +413,8 @@ export class NewShipmentModalComponent {
   deliveryAddress = '';
   selectedBoxId = '';
   selectedMode: ThermalMode = 'HOT';
-  minTemp = 65.0;
-  maxTemp = 80.0;
+  minTemp = 65;
+  maxTemp = 80;
 
   createdOtp: string | null = null;
   copied = false;
@@ -424,8 +425,11 @@ export class NewShipmentModalComponent {
 
   constructor(
     private translationService: TranslationService,
-    private telemetryService: TelemetryService
-  ) {}
+    private telemetryService: TelemetryService,
+    private prefs: PreferencesService
+  ) {
+    this.selectMode('HOT');
+  }
 
   t(key: string): string {
     return this.translationService.translate(key);
@@ -433,12 +437,13 @@ export class NewShipmentModalComponent {
 
   selectMode(mode: ThermalMode) {
     this.selectedMode = mode;
+    const d = this.prefs.thermalDefaults();
     if (mode === 'HOT') {
-      this.minTemp = 65.0;
-      this.maxTemp = 80.0;
+      this.minTemp = d.hotMin;
+      this.maxTemp = d.hotMax;
     } else {
-      this.minTemp = 2.0;
-      this.maxTemp = 8.0;
+      this.minTemp = d.coldMin;
+      this.maxTemp = d.coldMax;
     }
   }
 

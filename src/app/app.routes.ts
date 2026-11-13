@@ -6,6 +6,7 @@ import { AlertsComponent } from './features/alerts/alerts.component';
 import { SmartBoxesComponent } from './features/smartboxes/smartboxes.component';
 import { HistoryComponent } from './features/history/history.component';
 import { OperatorsComponent } from './features/operators/operators.component';
+import { SettingsComponent } from './features/settings/settings.component';
 import { authGuard, guestGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -24,6 +25,7 @@ export const routes: Routes = [
       { path: 'history', component: HistoryComponent },
       { path: 'smartboxes', component: SmartBoxesComponent },
       { path: 'operators', component: OperatorsComponent },
+      { path: 'settings', component: SettingsComponent },
       { path: '', redirectTo: 'monitoring', pathMatch: 'full' }
     ]
   },
