@@ -17,11 +17,7 @@ import { TelemetryService } from '../core/services/telemetry.service';
       <aside class="app-sidebar" aria-label="Navegación principal">
         <div class="sidebar-header">
           <div class="logo-container">
-            <span class="logo-emoji">🔥❄️</span>
-            <div class="logo-text">
-              <span class="brand-name">Cold2Hot</span>
-              <span class="brand-sub">IoT Custody</span>
-            </div>
+            <img class="sidebar-logo" src="brand/logo-full.png" alt="Cold2Hot" />
           </div>
         </div>
 
@@ -171,6 +167,8 @@ import { TelemetryService } from '../core/services/telemetry.service';
     </div>
   `,
   styles: [`
+    .sidebar-logo { width: 150px; height: auto; display: block; }
+
     .conn-banner { background: var(--danger-bg); color: var(--danger-strong); padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 14px; }
 
     .app-layout {

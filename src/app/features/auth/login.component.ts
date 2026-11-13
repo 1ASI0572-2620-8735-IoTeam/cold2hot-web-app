@@ -14,8 +14,7 @@ import { TranslationService } from '../../core/services/translation.service';
       <div class="login-brand-panel">
         <div class="brand-header">
           <div class="logo-box">
-            <span class="logo-icon">🔥❄️</span>
-            <span class="brand-title">Cold2Hot</span>
+            <img class="brand-logo" src="brand/logo-full.png" alt="Cold2Hot" />
           </div>
           <div class="brand-badge">IoT Platform</div>
         </div>
@@ -124,6 +123,9 @@ import { TranslationService } from '../../core/services/translation.service';
     </div>
   `,
   styles: [`
+    .brand-logo { width: 170px; height: auto; display: block; }
+    .form-logo { display: none; }
+
     .msg { font-size: 13px; margin: 0; padding: 10px 12px; border-radius: var(--radius-sm); }
     .msg-error { background: var(--danger-bg); color: var(--danger-strong); }
     .msg-ok { background: var(--ok-bg); color: var(--ok-strong); }
