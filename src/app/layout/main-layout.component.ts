@@ -56,13 +56,6 @@ interface NavLink {
               />
             </label>
 
-            <a routerLink="/dashboard/alerts" class="icon-btn" aria-label="Alertas" title="Alertas">
-              <app-icon name="bell" [size]="20" />
-              <span *ngIf="criticalAlerts() > 0" class="dot-badge">{{ criticalAlerts() }}</span>
-            </a>
-
-            <span class="divider" aria-hidden="true"></span>
-
             <div class="profile">
               <button type="button" class="profile-btn" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()" aria-haspopup="menu">
                 <span class="avatar">{{ initials() }}</span>
@@ -131,6 +124,7 @@ interface NavLink {
     .nav::-webkit-scrollbar { display: none; }
     .nav-link {
       position: relative;
+      flex: none;
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -233,6 +227,18 @@ interface NavLink {
       .search.focused { width: 220px; padding: 0 14px; justify-content: flex-start; }
       .search.focused input { display: block; }
       .profile-meta { display: none; }
+    }
+    @media (max-width: 1240px) {
+      .topbar-inner { gap: 16px; padding: 0 20px; }
+      .nav { gap: 6px; }
+      .nav-link { padding: 0 12px; }
+      .nav-link app-icon { display: none; }
+    }
+    @media (max-width: 1040px) {
+      .topbar-inner { flex-wrap: wrap; height: auto; padding: 10px 16px 0; gap: 8px 16px; }
+      .actions { margin-left: auto; gap: 4px; }
+      .nav { order: 3; flex-basis: 100%; padding-bottom: 10px; }
+      .nav-link app-icon { display: inline-flex; }
     }
     @media (max-width: 860px) {
       .topbar-inner { flex-wrap: wrap; height: auto; padding: 10px 16px 0; gap: 8px 16px; }

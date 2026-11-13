@@ -18,104 +18,54 @@ import { ThermalMode } from '../../core/models/shipment.model';
         <!-- PANTALLA 1: FORMULARIO W06 -->
         <div *ngIf="!createdOtp" class="form-view">
           <div class="modal-header">
-            <div>
-              <h2 class="modal-title">{{ t('modal_title') }}</h2>
-              <p class="modal-subtitle">Asigna una SmartBox con control térmico garantizado</p>
-            </div>
+            <h2 class="modal-title">Nuevo envío</h2>
             <button class="close-x-btn" (click)="close()" aria-label="Cerrar"><app-icon name="x" [size]="18" /></button>
           </div>
 
           <form (ngSubmit)="onSubmit()" class="modal-form">
-            <!-- ID y Dirección -->
-            <div class="form-row">
-              <div class="form-group flex-1">
-                <label>{{ t('modal_order_id') }}</label>
-                <input
-                  type="text"
-                  [(ngModel)]="orderId"
-                  name="orderId"
-                  readonly
-                  class="custom-input bg-disabled"
-                />
-              </div>
-
-              <div class="form-group flex-2">
-                <label>{{ t('modal_select_box') }}</label>
-                <select [(ngModel)]="selectedBoxId" name="selectedBoxId" class="custom-select" required>
-                  <option value="" disabled>Selecciona una caja disponible</option>
-                  <option *ngFor="let box of availableBoxes" [value]="box.id">
-                    {{ box.id }} · {{ box.serialNumber }} (Batería: {{ box.batteryLevel }}%)
-                  </option>
-                </select>
-              </div>
+            <div class="form-group">
+              <label for="box">Caja</label>
+              <select id="box" [(ngModel)]="selectedBoxId" name="selectedBoxId" class="custom-select" required>
+                <option value="" disabled>Elige una caja libre</option>
+                <option *ngFor="let box of availableBoxes" [value]="box.id">{{ box.id }} · {{ box.batteryLevel }}%</option>
+              </select>
             </div>
 
             <div class="form-group">
-              <label>{{ t('modal_address') }}</label>
+              <label for="addr">Dirección</label>
               <input
+                id="addr"
                 type="text"
                 [(ngModel)]="deliveryAddress"
                 name="deliveryAddress"
                 required
-                placeholder="Ej. Av. Primavera 120, Surco"
+                placeholder="Av. Primavera 120, Surco"
                 class="custom-input"
               />
             </div>
 
-            <!-- Perfil Térmico Visual -->
             <div class="form-group">
-              <label>{{ t('modal_thermal_profile') }}</label>
-              <div class="profile-cards-grid">
-                <!-- Tarjeta Frío -->
-                <div
-                  class="profile-card"
-                  [class.selected]="selectedMode === 'COLD'"
-                  (click)="selectMode('COLD')"
-                >
-                  <div class="profile-icon cold-icon"><app-icon name="snow" [size]="26" /></div>
-                  <div class="profile-info">
-                    <div class="profile-name">Modo Frío</div>
-                    <div class="profile-desc">{{ t('modal_cold_desc') }}</div>
-                  </div>
-                </div>
-
-                <!-- Tarjeta Caliente -->
-                <div
-                  class="profile-card"
-                  [class.selected]="selectedMode === 'HOT'"
-                  (click)="selectMode('HOT')"
-                >
-                  <div class="profile-icon hot-icon"><app-icon name="flame" [size]="26" /></div>
-                  <div class="profile-info">
-                    <div class="profile-name">Modo Caliente</div>
-                    <div class="profile-desc">{{ t('modal_hot_desc') }}</div>
-                  </div>
-                </div>
+              <label id="mode-label">Temperatura</label>
+              <div class="profile-cards-grid" role="radiogroup" aria-labelledby="mode-label">
+                <button type="button" role="radio" class="profile-card cold" [class.selected]="selectedMode === 'COLD'" [attr.aria-checked]="selectedMode === 'COLD'" (click)="selectMode('COLD')">
+                  <app-icon name="snow" [size]="20" />
+                  <span class="profile-name">Frío</span>
+                </button>
+                <button type="button" role="radio" class="profile-card hot" [class.selected]="selectedMode === 'HOT'" [attr.aria-checked]="selectedMode === 'HOT'" (click)="selectMode('HOT')">
+                  <app-icon name="flame" [size]="20" />
+                  <span class="profile-name">Caliente</span>
+                </button>
               </div>
             </div>
 
-            <!-- Ajuste de Rangos Min / Max -->
             <div class="form-row">
-              <div class="form-group flex-1">
-                <label>{{ t('modal_min_temp') }}</label>
-                <input
-                  type="number"
-                  [(ngModel)]="minTemp"
-                  name="minTemp"
-                  class="custom-input"
-                  step="0.5"
-                />
+              <div class="form-group">
+                <label for="tmin">Mínimo °C</label>
+                <input id="tmin" type="number" [(ngModel)]="minTemp" name="minTemp" class="custom-input" [class.cold]="selectedMode === 'COLD'" step="0.5" />
               </div>
-
-              <div class="form-group flex-1">
-                <label>{{ t('modal_max_temp') }}</label>
-                <input
-                  type="number"
-                  [(ngModel)]="maxTemp"
-                  name="maxTemp"
-                  class="custom-input"
-                  step="0.5"
-                />
+              <div class="form-group">
+                <label for="tmax">Máximo °C</label>
+                <input id="tmax" type="number" [(ngModel)]="maxTemp" name="maxTemp" class="custom-input" [class.cold]="selectedMode === 'COLD'" step="0.5" />
               </div>
             </div>
 
@@ -139,8 +89,8 @@ import { ThermalMode } from '../../core/models/shipment.model';
             <span class="success-check"><app-icon name="check" [size]="26" [stroke]="2.4" /></span>
           </div>
 
-          <h2 class="otp-dialog-title">{{ t('otp_dialog_title') }}</h2>
-          <p class="otp-dialog-sub">{{ t('otp_subtitle') }}</p>
+          <h2 class="otp-dialog-title">Envío creado</h2>
+          <p class="otp-dialog-sub">Código de apertura para el receptor</p>
 
           <!-- Código OTP en tipografía Space Grotesk destacada -->
           <div class="otp-display-box">
@@ -148,7 +98,7 @@ import { ThermalMode } from '../../core/models/shipment.model';
           </div>
 
           <p class="otp-expiry-hint">
-            Válido para un solo uso · Se transmitirá al microcontrolador ESP32 de la caja {{ selectedBoxId }}
+            Un solo uso · Caja {{ selectedBoxId }}
           </p>
 
           <div class="otp-actions">
@@ -181,11 +131,11 @@ import { ThermalMode } from '../../core/models/shipment.model';
 
     .modal-card {
       width: 100%;
-      max-width: 560px;
+      max-width: 480px;
       background-color: var(--white);
       border-radius: var(--radius-card);
       box-shadow: 0 20px 40px -15px rgba(14, 23, 38, 0.3);
-      padding: 32px;
+      padding: 28px;
       animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -226,109 +176,30 @@ import { ThermalMode } from '../../core/models/shipment.model';
       }
     }
 
-    .modal-form {
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
-    .form-row {
-      display: flex;
-      gap: 14px;
-    }
-
-    .flex-1 { flex: 1; }
-    .flex-2 { flex: 2; }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-
-      label {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--ink);
-      }
-    }
+    .modal-form { display: flex; flex-direction: column; gap: 16px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .form-group label { font-size: 13px; font-weight: 500; color: var(--muted); }
 
     .custom-input, .custom-select {
-      height: 46px;
-      padding: 0 14px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-input);
-      font-family: var(--font-body);
-      font-size: 14px;
-      color: var(--ink);
-      background-color: var(--white);
-
-      &:focus {
-        border-color: var(--hot);
-        outline: none;
-      }
-
-      &.bg-disabled {
-        background-color: var(--bg-alt);
-        color: var(--muted);
-      }
+      width: 100%; min-width: 0; height: 46px; padding: 0 14px;
+      border: 1px solid var(--line); border-radius: var(--radius-input);
+      font-family: var(--font-body); font-size: 14px; color: var(--ink); background-color: var(--white);
+      transition: border-color .2s ease, box-shadow .2s ease;
     }
+    .custom-input:focus, .custom-select:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 3px var(--bg-alt); }
+    .custom-input.cold:focus { border-color: var(--cold-strong); }
 
-    /* Tarjetas selectoras de modo térmico */
-    .profile-cards-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
+    .profile-cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .profile-card {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 14px;
-      border: 2px solid var(--line);
-      border-radius: var(--radius-card);
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &:hover {
-        border-color: #CBD5E1;
-      }
-
-      &.selected {
-        border-color: var(--hot);
-        background-color: rgba(255, 107, 61, 0.04);
-      }
+      display: flex; align-items: center; justify-content: center; gap: 10px; height: 48px;
+      border: 1px solid var(--line); border-radius: var(--radius-input); background: var(--white);
+      color: var(--ink-2); font: inherit; cursor: pointer; transition: all .2s ease;
     }
-
-    .profile-icon {
-      font-size: 24px;
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      &.cold-icon {
-        background-color: var(--cold-bg);
-      }
-
-      &.hot-icon {
-        background-color: var(--hot-bg);
-      }
-    }
-
-    .profile-name {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .profile-desc {
-      font-size: 11px;
-      color: var(--muted);
-      line-height: 1.3;
-    }
+    .profile-card:hover { border-color: #CBD5E1; }
+    .profile-card.hot.selected { border-color: var(--hot); background: var(--hot-bg); color: var(--hot-strong); }
+    .profile-card.cold.selected { border-color: var(--cold); background: var(--cold-bg); color: var(--cold-strong); }
+    .profile-name { font-size: 14px; font-weight: 600; }
 
     .modal-actions {
       display: flex;

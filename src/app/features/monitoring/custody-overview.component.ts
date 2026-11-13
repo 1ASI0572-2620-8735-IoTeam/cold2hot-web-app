@@ -1,9 +1,8 @@
-import { Component, computed, inject, output } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { TelemetryService } from '../../core/services/telemetry.service';
-import { IconComponent } from '../../shared/icon.component';
 import { RevealDirective } from '../../shared/reveal.directive';
 
 interface Tile {
@@ -21,11 +20,11 @@ const SEGMENTS = 12;
 @Component({
   selector: 'app-custody-overview',
   standalone: true,
-  imports: [CommonModule, RouterModule, IconComponent, RevealDirective],
+  imports: [CommonModule, RouterModule, RevealDirective],
   template: `
     <section class="hero card" appReveal>
       <h2 class="hero-title">Hola, {{ firstName() }}</h2>
-      <p class="hello">Integridad térmica de tus envíos</p>
+      <p class="hello">Envíos en rango</p>
 
       <div class="gauge-wrap">
         <svg viewBox="0 0 240 140" class="gauge" role="img" [attr.aria-label]="'Integridad térmica ' + scoreLabel()">
@@ -41,15 +40,10 @@ const SEGMENTS = 12;
         <div class="gauge-center">
           <span class="tag"><i [ngClass]="'t-' + scoreTone()"></i>{{ scoreBadge() }}</span>
           <span class="score">{{ scoreLabel() }}</span>
-          <span class="score-sub">en rango</span>
         </div>
         <span class="g-min">0%</span>
         <span class="g-max">100%</span>
       </div>
-
-      <button type="button" class="btn btn-dark hero-btn" (click)="newShipment.emit()">
-        <app-icon name="plus" [size]="18" /> Crear nuevo envío
-      </button>
     </section>
 
     <div class="tiles">
@@ -79,7 +73,7 @@ const SEGMENTS = 12;
     .g-min, .g-max { position: absolute; bottom: -18px; font-size: 11px; color: var(--muted); }
     .g-min { left: 10px; }
     .g-max { right: 4px; }
-    .hero-btn { margin-top: 30px; width: 100%; }
+    .hero { padding-bottom: 36px; }
 
     .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .tile { padding: 16px; display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: inherit; border-radius: 18px; }
@@ -110,8 +104,6 @@ const SEGMENTS = 12;
 export class CustodyOverviewComponent {
   private auth = inject(AuthService);
   private telemetry = inject(TelemetryService);
-
-  readonly newShipment = output<void>();
 
   trackIndex = (i: number) => i;
   trackTile = (_: number, t: Tile) => t.label;

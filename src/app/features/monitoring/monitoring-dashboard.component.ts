@@ -70,7 +70,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
       </div>
 
       <aside class="dash-side" aria-label="Resumen operativo">
-        <app-custody-overview (newShipment)="showNewShipmentModal = true" />
+        <app-custody-overview />
       </aside>
       </div>
 
