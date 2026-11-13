@@ -99,14 +99,24 @@ h1, h2, h3, .font-display {
   }
 }
 
-.btn-primary {
+.btn-primary,
+.btn-dark {
+  background-color: var(--ink);
+  color: var(--white);
+  box-shadow: 0 8px 18px -10px rgba(14, 23, 38, 0.6);
+
+  &:hover:not(:disabled) {
+    background-color: #1F2A3D;
+    transform: translateY(-1px);
+  }
+}
+
+.btn-accent {
   background-color: var(--hot);
   color: var(--white);
-  box-shadow: 0 8px 20px -6px rgba(253, 87, 1, 0.45);
 
   &:hover:not(:disabled) {
     background-color: var(--hot-strong);
-    transform: translateY(-1px);
   }
 }
 

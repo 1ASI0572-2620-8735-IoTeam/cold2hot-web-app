@@ -127,25 +127,27 @@ interface NavLink {
     .w-two { color: var(--cold-strong); }
     .w-hot { color: var(--hot); }
 
-    .nav { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+    .nav { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
     .nav::-webkit-scrollbar { display: none; }
     .nav-link {
       position: relative;
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      height: 44px;
-      padding: 0 14px;
+      height: 40px;
+      padding: 0 16px;
       border-radius: var(--radius-pill);
-      color: var(--muted);
+      border: 1px solid var(--line);
+      background: var(--white);
+      color: var(--ink-2);
       font-weight: 500;
       font-size: 14px;
       text-decoration: none;
       white-space: nowrap;
       transition: color .2s ease, background-color .2s ease;
     }
-    .nav-link:hover { color: var(--ink); background: var(--bg-alt); }
-    .nav-link.active { color: var(--hot); background: var(--hot-bg); font-weight: 600; }
+    .nav-link:hover { color: var(--ink); border-color: #CBD5E1; }
+    .nav-link.active { color: var(--white); background: var(--ink); border-color: var(--ink); font-weight: 600; }
     .nav-badge {
       min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
       background: var(--danger); color: #fff; font-size: 11px; font-weight: 700;

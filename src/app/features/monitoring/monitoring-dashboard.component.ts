@@ -1,5 +1,7 @@
 import { RevealDirective } from '../../shared/reveal.directive';
 import { IconComponent } from '../../shared/icon.component';
+import { CustodyOverviewComponent } from './custody-overview.component';
+import { FleetInsightsComponent } from './fleet-insights.component';
 import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslationService } from '../../core/services/translation.service';
@@ -10,48 +12,12 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
 @Component({
   selector: 'app-monitoring-dashboard',
   standalone: true,
-  imports: [CommonModule, NewShipmentModalComponent, RevealDirective, IconComponent],
+  imports: [CommonModule, NewShipmentModalComponent, RevealDirective, IconComponent, CustodyOverviewComponent, FleetInsightsComponent],
   template: `
     <div class="monitoring-container">
       
-      <!-- 1. TARJETAS DE MÉTRICAS KPI (Figma W04) -->
-      <section class="kpi-grid" aria-label="Resumen operativo">
-        <!-- KPI: Total Envíos -->
-        <div class="card kpi-card" [appReveal]="0">
-          <div class="kpi-meta">
-            <span class="kpi-label">{{ t('kpi_total_active') }}</span>
-            <span class="kpi-value">{{ totalActive() }}</span>
-          </div>
-          <div class="kpi-icon-box tone-cold"><span class="blob"></span><app-icon name="package" [size]="30" [stroke]="1.6" /></div>
-        </div>
-
-        <!-- KPI: En Ruta -->
-        <div class="card kpi-card" [appReveal]="1">
-          <div class="kpi-meta">
-            <span class="kpi-label">{{ t('kpi_in_transit') }}</span>
-            <span class="kpi-value">{{ inTransit() }}</span>
-          </div>
-          <div class="kpi-icon-box tone-hot"><span class="blob"></span><app-icon name="truck" [size]="30" [stroke]="1.6" /></div>
-        </div>
-
-        <!-- KPI: Alertas Críticas -->
-        <div class="card kpi-card" [appReveal]="2" [class.alert-glow]="criticalAlerts() > 0">
-          <div class="kpi-meta">
-            <span class="kpi-label">{{ t('kpi_critical_alerts') }}</span>
-            <span class="kpi-value text-danger">{{ criticalAlerts() }}</span>
-          </div>
-          <div class="kpi-icon-box tone-danger"><span class="blob"></span><app-icon name="siren" [size]="30" [stroke]="1.6" /></div>
-        </div>
-
-        <!-- KPI: Cajas Disponibles -->
-        <div class="card kpi-card" [appReveal]="3">
-          <div class="kpi-meta">
-            <span class="kpi-label">{{ t('kpi_boxes_available') }}</span>
-            <span class="kpi-value text-ok">{{ availableBoxes() }}</span>
-          </div>
-          <div class="kpi-icon-box tone-ok"><span class="blob"></span><app-icon name="battery" [size]="30" [stroke]="1.6" /></div>
-        </div>
-      </section>
+      <div class="dash-grid">
+      <div class="dash-main">
 
       <!-- 2. BARRA DE HERRAMIENTAS Y FILTROS -->
       <section class="toolbar-section">
@@ -224,6 +190,14 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
         </div>
       </section>
 
+      <app-fleet-insights />
+      </div>
+
+      <aside class="dash-side" aria-label="Resumen operativo">
+        <app-custody-overview (newShipment)="showNewShipmentModal = true" />
+      </aside>
+      </div>
+
       <!-- 4. MODAL / DETALLE DE TRAYECTO TÉRMICO (Figma W05) -->
       <div *ngIf="selectedShipment" class="drawer-backdrop" (click)="selectedShipment = null">
         <aside class="detail-drawer" (click)="$event.stopPropagation()">
@@ -341,6 +315,14 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
       display: flex;
       flex-direction: column;
       gap: 28px;
+    }
+
+    .dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
+    .dash-main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .dash-side { position: sticky; top: 92px; }
+    @media (max-width: 1180px) {
+      .dash-grid { grid-template-columns: 1fr; }
+      .dash-side { position: static; order: -1; }
     }
 
     /* 1. KPI GRID */
