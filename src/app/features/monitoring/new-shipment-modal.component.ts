@@ -1,11 +1,14 @@
 import { IconComponent } from '../../shared/icon.component';
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslationService } from '../../core/services/translation.service';
 import { PreferencesService } from '../../core/services/preferences.service';
 import { TelemetryService } from '../../core/services/telemetry.service';
-import { ThermalMode } from '../../core/models/shipment.model';
+import { Operator, ThermalMode } from '../../core/models/shipment.model';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { API } from '../../core/config/api.config';
 
 @Component({
   selector: 'app-new-shipment-modal',
@@ -29,6 +32,20 @@ import { ThermalMode } from '../../core/models/shipment.model';
                 <option value="" disabled>Elige una caja libre</option>
                 <option *ngFor="let box of availableBoxes" [value]="box.id">{{ box.id }} · {{ box.batteryLevel }}%</option>
               </select>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="cust">Cliente</label>
+                <input id="cust" type="text" [(ngModel)]="customerName" name="customerName" required placeholder="María López" class="custom-input" />
+              </div>
+              <div class="form-group">
+                <label for="op">Operador</label>
+                <select id="op" [(ngModel)]="operatorId" name="operatorId" class="custom-select" required>
+                  <option value="" disabled>Elige uno</option>
+                  <option *ngFor="let o of operators()" [value]="o.operatorId">{{ o.name }}</option>
+                </select>
+              </div>
             </div>
 
             <div class="form-group">
@@ -76,7 +93,7 @@ import { ThermalMode } from '../../core/models/shipment.model';
               <button type="button" class="btn btn-secondary" (click)="close()">
                 {{ t('modal_cancel') }}
               </button>
-              <button type="submit" class="btn btn-primary" [disabled]="!deliveryAddress || !selectedBoxId || submitting">
+              <button type="submit" class="btn btn-primary" [disabled]="!deliveryAddress || !customerName || !operatorId || !selectedBoxId || submitting">
                 {{ t('modal_create') }}
               </button>
             </div>
@@ -283,6 +300,9 @@ export class NewShipmentModalComponent {
 
   orderId = 'Se asigna al confirmar';
   deliveryAddress = '';
+  customerName = '';
+  operatorId = '';
+  operators = signal<Operator[]>([]);
   selectedBoxId = '';
   selectedMode: ThermalMode = 'HOT';
   minTemp = 65;
@@ -298,9 +318,13 @@ export class NewShipmentModalComponent {
   constructor(
     private translationService: TranslationService,
     private telemetryService: TelemetryService,
-    private prefs: PreferencesService
+    private prefs: PreferencesService,
+    private http: HttpClient
   ) {
     this.selectMode('HOT');
+    firstValueFrom(this.http.get<Operator[]>(`${API.iam}/operators`))
+      .then(list => this.operators.set(list.filter(o => o.status !== 'INACTIVE')))
+      .catch(() => (this.errorMsg = 'No se pudieron cargar los operadores.'));
   }
 
   t(key: string): string {
@@ -326,7 +350,10 @@ export class NewShipmentModalComponent {
     this.submitting = true;
     this.errorMsg = '';
     const res = await this.telemetryService.createShipment({
+      customerName: this.customerName,
       address: this.deliveryAddress,
+      operatorId: this.operatorId,
+      operatorName: this.operators().find(o => o.operatorId === this.operatorId)?.name ?? '',
       thermalMode: this.selectedMode,
       minTemp: this.minTemp,
       maxTemp: this.maxTemp,
@@ -334,9 +361,9 @@ export class NewShipmentModalComponent {
     });
 
     this.submitting = false;
-    if (res.ok && res.otpCode) {
+    if (res.ok) {
       this.orderId = '#' + res.shipmentId;
-      this.createdOtp = res.otpCode;
+      this.createdOtp = res.otpCode ?? '------';
     } else {
       this.errorMsg = res.error || 'No se pudo crear el despacho';
     }

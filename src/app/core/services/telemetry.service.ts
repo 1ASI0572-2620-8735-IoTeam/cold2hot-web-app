@@ -5,21 +5,31 @@ import { API } from '../config/api.config';
 import { AlertItem, AuditReport, Shipment, SmartBox, ThermalReading } from '../models/shipment.model';
 import { AuthService, errorMessage } from './auth.service';
 
-interface ApiShipment {
-  shipmentId: string;
-  customerAddress: string;
-  thermalMode: 'COLD' | 'HOT';
-  minTemp: number;
-  maxTemp: number;
+export interface ApiOrder {
+  orderId: string;
+  customerName: string;
+  deliveryAddress: string;
   smartBoxId: string;
+  operatorId: string;
   operatorName: string;
-  status: 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
-  otpCode: string;
+  thermalProfile: { type: 'COLD' | 'HOT'; minTemperature: number; maxTemperature: number };
+  status: 'CREATED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
+  incidents: string[];
+  createdAt: string;
+  deliveredAt: string | null;
+}
+interface ApiAudit {
+  custodyStatus: 'VERIFIED' | 'THERMAL_BREACH' | 'UNAUTHORIZED_ACCESS';
+  thermalHistory: ApiReading[];
+  accessAttempts: { action: string; result: string; timestamp: string }[];
+  openingEvents: { lidOpen: boolean; authorized: boolean | null; forced: boolean; timestamp: string }[];
+  securityAlerts: { type: string; message: string; severity: string; timestamp: string; resolved: boolean }[];
 }
 interface ApiReading {
   temperature: number;
   timestamp: string;
   lidOpen: boolean;
+  inRange?: boolean | null;
 }
 interface ApiBox {
   boxId: string;
@@ -31,9 +41,12 @@ interface ApiBox {
 }
 interface ApiAlert {
   alertId: string;
-  type: AlertItem['type'];
+  type: AlertItem['type'] | 'THERMAL_BREACH';
   severity: AlertItem['severity'];
   message?: string;
+  temperature?: number;
+  minTemperature?: number;
+  maxTemperature?: number;
   shipmentId?: string;
   orderId?: string | null;
   smartBoxId?: string;
@@ -147,7 +160,7 @@ export class TelemetryService {
   private async load() {
     const get = <T>(url: string) => firstValueFrom(this.http.get<T>(url));
     const [ships, boxes, telAlerts, secAlerts, boxAlerts] = await Promise.all([
-      this.safe(get<ApiShipment[]>(`${API.orders}/shipments`), [] as ApiShipment[]),
+      this.safe(get<ApiOrder[]>(`${API.orders}?status=IN_TRANSIT`), [] as ApiOrder[]),
       this.safe(get<ApiBox[]>(`${API.containers}/smartboxes`), [] as ApiBox[]),
       this.safe(get<ApiAlert[]>(`${API.telemetry}/alerts?limit=${ALERTS_LIMIT}`), [] as ApiAlert[]),
       this.safe(get<ApiAlert[]>(`${API.security}/alerts`), [] as ApiAlert[]),
@@ -161,7 +174,7 @@ export class TelemetryService {
     if (this.errorSignal() !== null) this.errorSignal.set(null);
 
     // SmartBoxes
-    const active = ships.data.filter(s => s.status === 'IN_TRANSIT');
+    const active = ships.data;
     this.update(this.smartBoxesSignal,
       boxes.data.map(b => {
         const assigned = active.find(s => s.smartBoxId === b.boxId);
@@ -171,7 +184,7 @@ export class TelemetryService {
           macAddress: b.macAddress,
           batteryLevel: b.batteryLevel,
           status: b.status,
-          assignedShipmentId: assigned ? '#' + assigned.shipmentId : undefined,
+          assignedShipmentId: assigned ? '#' + assigned.orderId : undefined,
           lastHeartbeat: relative(b.lastHeartbeat)
         };
       })
@@ -180,18 +193,22 @@ export class TelemetryService {
     // Alertas unificadas (telemetría, seguridad, contenedores)
     const rank = { CRITICAL: 0, WARNING: 1, INFO: 2 };
     const toAlert = (a: ApiAlert, source: AlertItem['source']) => {
-      const ref = a.shipmentId || a.orderId;
+      const ref = (a.shipmentId || a.orderId || '').replace('#', '');
+      const type = a.type === 'THERMAL_BREACH' ? 'TEMP_BREACH' : a.type;
       return {
         alert: {
           id: a.alertId,
           source,
           shipmentId: ref ? '#' + ref : '—',
           smartBoxId: a.smartBoxId || a.boxId || '—',
-          type: a.type,
+          type,
           severity: a.severity,
           message: a.message || `Batería baja: SmartBox ${a.boxId} con ${a.batteryLevel}% de carga restante.`,
           timestamp: time(a.timestamp),
-          resolved: a.resolved
+          resolved: a.resolved,
+          temperature: a.temperature,
+          minTemp: a.minTemperature,
+          maxTemp: a.maxTemperature
         } as AlertItem,
         at: new Date(a.timestamp).getTime()
       };
@@ -210,15 +227,13 @@ export class TelemetryService {
 
     // Detalle por envío: serie térmica y estado del cerrojo
     const details = await Promise.all(
-      ships.data
-        .filter(s => s.status !== 'DELIVERED')
-        .map(async s => {
-          const [hist, lock] = await Promise.all([
-            this.safe(get<ApiReading[]>(`${API.telemetry}/shipments/${s.shipmentId}/history?limit=${HISTORY_LIMIT}`), [] as ApiReading[]),
-            this.safe(get<{ lockState: 'LOCKED' | 'UNLOCKED' }>(`${API.security}/locks/${s.smartBoxId}`), { lockState: 'LOCKED' as const })
-          ]);
-          return { s, readings: hist.data, lock: lock.data.lockState };
-        })
+      ships.data.map(async s => {
+        const [hist, lock] = await Promise.all([
+          this.safe(get<{ history: ApiReading[] }>(`${API.telemetry}/boxes/${s.smartBoxId}/history?orderId=${s.orderId}&limit=${HISTORY_LIMIT}`), { history: [] as ApiReading[] }),
+          this.safe(get<{ lockState: 'LOCKED' | 'UNLOCKED' }>(`${API.security}/locks/${s.smartBoxId}`), { lockState: 'LOCKED' as const })
+        ]);
+        return { s, readings: hist.data.history ?? [], lock: lock.data.lockState };
+      })
     );
 
     const boxById = new Map(boxes.data.map(b => [b.boxId, b]));
@@ -226,22 +241,23 @@ export class TelemetryService {
       details.map(({ s, readings, lock }) => {
         const last = readings[readings.length - 1];
         const temp = last ? last.temperature : null;
-        const breach = temp !== null && (temp < s.minTemp || temp > s.maxTemp);
-        const history: ThermalReading[] = readings.slice(-30).map(r => ({ timestamp: time(r.timestamp), temperature: r.temperature }));
+        const { minTemperature: lo, maxTemperature: hi } = s.thermalProfile;
+        const breach = temp !== null && (temp < lo || temp > hi);
+        const history: ThermalReading[] = readings.map(r => ({ timestamp: time(r.timestamp), temperature: r.temperature }));
         return {
-          id: '#' + s.shipmentId,
-          customerAddress: s.customerAddress,
-          thermalMode: s.thermalMode,
-          targetMinTemp: s.minTemp,
-          targetMaxTemp: s.maxTemp,
+          id: '#' + s.orderId,
+          customerAddress: s.deliveryAddress,
+          thermalMode: s.thermalProfile.type,
+          targetMinTemp: lo,
+          targetMaxTemp: hi,
           currentTemp: temp,
           thermalStatus: breach ? 'BREACH' : 'OPTIMAL',
           operatorName: s.operatorName,
           smartBoxId: s.smartBoxId,
           lockStatus: lock,
           batteryLevel: boxById.get(s.smartBoxId)?.batteryLevel ?? 0,
-          status: breach ? 'CRITICAL' : s.status,
-          otpCode: s.otpCode,
+          status: breach ? 'CRITICAL' : 'IN_TRANSIT',
+          otpCode: '',
           lidOpen: !!last?.lidOpen,
           history
         } as Shipment;
@@ -250,33 +266,37 @@ export class TelemetryService {
   }
 
   async createShipment(data: {
+    customerName: string;
     address: string;
     thermalMode: 'COLD' | 'HOT';
     minTemp: number;
     maxTemp: number;
     smartBoxId: string;
+    operatorId: string;
+    operatorName: string;
   }): Promise<{ ok: boolean; otpCode?: string; shipmentId?: string; error?: string }> {
     try {
       const res = await firstValueFrom(
-        this.http.post<ApiShipment>(`${API.orders}/shipments`, {
-          customerAddress: data.address,
-          thermalMode: data.thermalMode,
-          minTemp: data.minTemp,
-          maxTemp: data.maxTemp,
+        this.http.post<ApiOrder & { otp: { code: string } | null }>(`${API.orders}`, {
+          customerName: data.customerName,
+          deliveryAddress: data.address,
           smartBoxId: data.smartBoxId,
-          operatorName: this.auth.currentUser()?.name
+          operatorId: data.operatorId,
+          operatorName: data.operatorName,
+          thermalProfile: { type: data.thermalMode, minTemperature: data.minTemp, maxTemperature: data.maxTemp }
         })
       );
       this.refresh();
-      return { ok: true, otpCode: res.otpCode, shipmentId: res.shipmentId };
+      return { ok: true, otpCode: res.otp?.code, shipmentId: res.orderId };
     } catch (err) {
       return { ok: false, error: errorMessage(err) };
     }
   }
 
-  async completeShipment(displayId: string): Promise<{ ok: boolean; error?: string }> {
+  /** Confirma la entrega adjuntando la foto de evidencia (data URL en base64). */
+  async completeShipment(displayId: string, photoBase64: string): Promise<{ ok: boolean; error?: string }> {
     try {
-      await firstValueFrom(this.http.patch(`${API.orders}/shipments/${displayId.replace('#', '')}/complete`, {}));
+      await firstValueFrom(this.http.post(`${API.orders}/${displayId.replace('#', '')}/evidence`, { photoBase64 }));
       this.refresh();
       return { ok: true };
     } catch (err) {
@@ -305,7 +325,49 @@ export class TelemetryService {
     }
   }
 
-  auditReports(): Promise<AuditReport[]> {
-    return firstValueFrom(this.http.get<AuditReport[]>(`${API.orders}/audit/reports`));
+  /** Todos los envíos (más recientes primero); los reportes se piden por páginas. */
+  historyOrders(): Promise<ApiOrder[]> {
+    return firstValueFrom(this.http.get<ApiOrder[]>(`${API.orders}`));
+  }
+
+  /** Cumplimiento de custodia del mes, calculado por el backend. */
+  fleetStats() {
+    return firstValueFrom(this.http.get<{ fleet: { totalDeliveries: number; perfectDeliveries: number; compliancePercent: number } }>(`${API.orders}/analytics/operators`));
+  }
+
+  /** Reportes de auditoría de los envíos indicados. */
+  reportsFor(orders: ApiOrder[]): Promise<AuditReport[]> {
+    return Promise.all(
+      orders.map(async o => {
+        const a = await firstValueFrom(this.http.get<ApiAudit>(`${API.orders}/audits/${o.orderId}`));
+        const logs = a.thermalHistory ?? [];
+        const temps = logs.map(l => l.temperature);
+        const breaches = logs.filter(l => l.inRange === false).length;
+        return {
+          shipmentId: o.orderId,
+          customerAddress: o.deliveryAddress,
+          thermalMode: o.thermalProfile.type,
+          minTemp: o.thermalProfile.minTemperature,
+          maxTemp: o.thermalProfile.maxTemperature,
+          smartBoxId: o.smartBoxId,
+          operatorName: o.operatorName,
+          status: o.status === 'DELIVERED' ? 'DELIVERED' : o.status === 'CANCELLED' ? 'CANCELLED' : 'IN_TRANSIT',
+          otpCode: '',
+          createdAt: o.createdAt,
+          deliveredAt: o.deliveredAt,
+          thermal: {
+            readings: temps.length,
+            min: temps.length ? Math.min(...temps) : null,
+            max: temps.length ? Math.max(...temps) : null,
+            average: temps.length ? Math.round((temps.reduce((x, y) => x + y, 0) / temps.length) * 10) / 10 : null,
+            breaches,
+            compliant: a.custodyStatus === 'VERIFIED' && breaches === 0
+          },
+          accessAttempts: a.accessAttempts ?? [],
+          tamperEvents: a.openingEvents ?? [],
+          thermalAlerts: (a.securityAlerts ?? []).filter(x => x.type === 'THERMAL_BREACH')
+        } as AuditReport;
+      })
+    );
   }
 }

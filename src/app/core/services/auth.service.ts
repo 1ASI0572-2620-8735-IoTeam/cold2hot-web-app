@@ -65,7 +65,7 @@ export class AuthService {
 
   async register(restaurantName: string, email: string, password: string): Promise<AuthResult> {
     try {
-      await firstValueFrom(this.http.post(`${API.iam}/auth/register`, { restaurantName, email, password }));
+      await firstValueFrom(this.http.post(`${API.iam}/auth/register`, { admin: { name: email.split('@')[0], email, password }, restaurant: { name: restaurantName } }));
       return { ok: true };
     } catch (err) {
       return { ok: false, error: errorMessage(err) };

@@ -23,6 +23,10 @@ const ICONS: Record<AlertItem['type'], string> = {
 
 /** Resume el mensaje del backend en pocas palabras. */
 const shortDetail = (a: AlertItem): string => {
+  if (a.type === 'TEMP_BREACH' && a.temperature !== undefined && a.minTemp !== undefined && a.maxTemp !== undefined) {
+    const low = a.temperature < a.minTemp;
+    return `${a.temperature}° · ${low ? 'mín.' : 'máx.'} ${low ? a.minTemp : a.maxTemp}°`;
+  }
   if (a.type === 'TEMP_BREACH') {
     const nums = [...a.message.matchAll(/(-?\d+(?:\.\d+)?)°C/g)].map(m => m[1]);
     if (nums.length >= 2) return `${nums[0]}° · ${a.message.includes('inferior') ? 'mín.' : 'máx.'} ${nums[1]}°`;

@@ -3,6 +3,7 @@ import { IconComponent } from '../../shared/icon.component';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuditReport } from '../../core/models/shipment.model';
+import { ApiOrder } from '../../core/services/telemetry.service';
 import { TelemetryService } from '../../core/services/telemetry.service';
 
 @Component({
@@ -13,20 +14,20 @@ import { TelemetryService } from '../../core/services/telemetry.service';
     <div class="page">
       <section class="summary card" appReveal>
         <div class="big">
-          <span class="big-num">{{ reports().length }}</span>
+          <span class="big-num">{{ total() }}</span>
           <span class="big-label">envíos registrados</span>
         </div>
         <div class="stats">
           <div class="stat">
-            <span class="stat-label">Custodia íntegra</span>
+            <span class="stat-label">Custodia íntegra (mes)</span>
             <span class="stat-val">{{ integrity() }}</span>
           </div>
           <div class="stat">
-            <span class="stat-label">Con desvíos</span>
+            <span class="stat-label">Con desvíos (mes)</span>
             <span class="stat-val">{{ withBreaches() }}</span>
           </div>
           <div class="stat">
-            <span class="stat-label">Entregados</span>
+            <span class="stat-label">Entregados (mes)</span>
             <span class="stat-val">{{ delivered() }}</span>
           </div>
         </div>
@@ -58,14 +59,14 @@ import { TelemetryService } from '../../core/services/telemetry.service';
             <small>{{ r.thermal.min === null ? 'Sin lecturas' : r.thermal.min + '° – ' + r.thermal.max + '°' }}</small>
           </span>
           <span class="c-num">{{ r.thermal.readings }}</span>
-          <span class="c-state" [class.bad]="!ok(r)">{{ ok(r) ? 'Íntegra' : r.thermal.breaches + ' desvíos' }}</span>
+          <span class="c-state" [class.bad]="!ok(r)">{{ ok(r) ? 'Íntegra' : (r.thermal.breaches ? r.thermal.breaches + (r.thermal.breaches === 1 ? ' desvío' : ' desvíos') : 'Con alertas') }}</span>
           <span class="c-status">{{ r.status === 'DELIVERED' ? 'Entregado' : r.status === 'IN_TRANSIT' ? 'En ruta' : 'Cancelado' }}</span>
           <button class="icon-btn" type="button" (click)="export(r)" [attr.aria-label]="'Exportar reporte de ' + r.shipmentId" title="Exportar reporte">
             <app-icon name="download" [size]="17" />
           </button>
         </div>
-        <button *ngIf="reports().length > shown()" type="button" class="more" (click)="shown.set(shown() + PAGE)">
-          Mostrar más ({{ reports().length - shown() }})
+        <button *ngIf="total() > reports().length" type="button" class="more" (click)="more()" [disabled]="loadingMore">
+          Mostrar más ({{ total() - reports().length }})
         </button>
       </section>
     </div>
@@ -134,12 +135,9 @@ export class HistoryComponent implements OnInit {
   readonly PAGE = 25;
   shown = signal(this.PAGE);
   page = computed(() => this.reports().slice(0, this.shown()));
-  delivered = computed(() => this.reports().filter(r => r.status === 'DELIVERED').length);
-  withBreaches = computed(() => this.reports().filter(r => !this.ok(r)).length);
-  integrity = computed(() => {
-    const withData = this.reports().filter(r => r.thermal.readings > 0);
-    return withData.length ? Math.round((withData.filter(r => this.ok(r)).length / withData.length) * 100) + '%' : '—';
-  });
+  delivered = computed(() => this.stats()?.total ?? 0);
+  withBreaches = computed(() => (this.stats() ? this.stats()!.total - this.stats()!.perfect : 0));
+  integrity = computed(() => (this.stats() && this.stats()!.total ? this.stats()!.percent + '%' : '—'));
 
   /** Escala común 0–90 °C para comparar rangos. */
   pos = (t: number) => Math.min(100, Math.max(0, (t / 90) * 100));
@@ -153,14 +151,42 @@ export class HistoryComponent implements OnInit {
     this.load();
   }
 
+  private orders: ApiOrder[] = [];
+  total = signal(0);
+  loadingMore = false;
+  stats = signal<{ total: number; perfect: number; percent: number } | null>(null);
+
   async load() {
     try {
-      this.reports.set(await this.telemetry.auditReports());
+      this.orders = await this.telemetry.historyOrders();
+      this.total.set(this.orders.length);
+      this.reports.set([]);
+      this.shown.set(this.PAGE);
+      await this.fetchPage();
+      this.telemetry.fleetStats().then(r => this.stats.set({ total: r.fleet.totalDeliveries, perfect: r.fleet.perfectDeliveries, percent: r.fleet.compliancePercent })).catch(() => {});
       this.error = '';
     } catch {
       this.error = 'No se pudo cargar el historial desde el backend.';
     }
     this.loaded = true;
+  }
+
+  /** Pide los reportes que faltan para los envíos visibles. */
+  private async fetchPage() {
+    const have = this.reports().length;
+    const next = this.orders.slice(have, this.shown());
+    if (!next.length) return;
+    this.loadingMore = true;
+    try {
+      this.reports.set([...this.reports(), ...(await this.telemetry.reportsFor(next))]);
+    } finally {
+      this.loadingMore = false;
+    }
+  }
+
+  async more() {
+    this.shown.set(this.shown() + this.PAGE);
+    await this.fetchPage();
   }
 
   export(r: AuditReport) {

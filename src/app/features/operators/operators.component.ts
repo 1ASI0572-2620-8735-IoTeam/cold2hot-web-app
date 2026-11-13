@@ -25,8 +25,8 @@ import { errorMessage } from '../../core/services/auth.service';
       <form *ngIf="showForm" class="card ops-form" (ngSubmit)="create()">
         <input class="ops-input" name="fullName" [(ngModel)]="fullName" placeholder="Nombre completo" required />
         <input class="ops-input" name="email" type="email" [(ngModel)]="email" placeholder="Correo electrónico" required />
-        <input class="ops-input" name="password" type="password" minlength="8" [(ngModel)]="password" placeholder="Contraseña (mín. 8)" required />
-        <button class="btn btn-primary" type="submit" [disabled]="saving">Crear</button>
+        <input class="ops-input" name="phone" type="tel" [(ngModel)]="phone" placeholder="Teléfono (opcional)" />
+        <button class="btn btn-primary" type="submit" [disabled]="saving">Invitar</button>
         <span *ngIf="error" class="ops-error">{{ error }}</span>
       </form>
 
@@ -35,13 +35,15 @@ import { errorMessage } from '../../core/services/auth.service';
         <p *ngIf="!loadError && operators().length === 0" class="ops-empty">Aún no hay operadores registrados.</p>
         <table *ngIf="operators().length" class="ops-table">
           <thead>
-            <tr><th>Nombre</th><th>Correo</th><th></th></tr>
+            <tr><th>Nombre</th><th>Correo</th><th>Entregas</th><th>Estado</th><th></th></tr>
           </thead>
           <tbody>
-            <tr *ngFor="let o of operators(); let i = index" [appReveal]="i">
+            <tr *ngFor="let o of operators(); let i = index; trackBy: trackOp" [appReveal]="i">
               <td>{{ o.name }}</td>
               <td>{{ o.email }}</td>
-              <td class="right"><button class="btn btn-danger" (click)="remove(o)">Eliminar</button></td>
+              <td>{{ o.completedDeliveries }}</td>
+              <td class="state">{{ label(o.status) }}</td>
+              <td class="right"><button class="btn btn-secondary" (click)="toggle(o)">{{ o.status === 'INACTIVE' ? 'Activar' : 'Desactivar' }}</button></td>
             </tr>
           </tbody>
         </table>
@@ -60,6 +62,7 @@ import { errorMessage } from '../../core/services/auth.service';
     .ops-table { width: 100%; border-collapse: collapse; }
     .ops-table th, .ops-table td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 14px; }
     .ops-table th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .state { color: var(--muted); }
     .right { text-align: right !important; }
     .ops-empty, .pad { padding: 24px; color: var(--muted); margin: 0; }
   `]
@@ -72,7 +75,7 @@ export class OperatorsComponent implements OnInit {
   saving = false;
   fullName = '';
   email = '';
-  password = '';
+  phone = '';
   error = '';
   loadError = '';
 
@@ -93,8 +96,8 @@ export class OperatorsComponent implements OnInit {
     this.saving = true;
     this.error = '';
     try {
-      await firstValueFrom(this.http.post(`${API.iam}/operators`, { fullName: this.fullName, email: this.email, password: this.password }));
-      this.fullName = this.email = this.password = '';
+      await firstValueFrom(this.http.post(`${API.iam}/operators`, { name: this.fullName, email: this.email, phone: this.phone || undefined }));
+      this.fullName = this.email = this.phone = '';
       this.showForm = false;
       await this.load();
     } catch (err) {
@@ -103,13 +106,15 @@ export class OperatorsComponent implements OnInit {
     this.saving = false;
   }
 
-  async remove(op: Operator) {
-    if (!confirm(`¿Eliminar al operador ${op.name}?`)) return;
+  label = (st: Operator['status']) => (st === 'ACTIVE' ? 'Activo' : st === 'INVITED' ? 'Invitado' : 'Inactivo');
+  trackOp = (_: number, o: Operator) => o.operatorId;
+
+  async toggle(op: Operator) {
     try {
-      await firstValueFrom(this.http.delete(`${API.iam}/operators/${op.id}`));
+      await firstValueFrom(this.http.patch(`${API.iam}/operators/${op.operatorId}/status`, { status: op.status === 'INACTIVE' ? 'ACTIVE' : 'INACTIVE' }));
       await this.load();
     } catch (err) {
-      this.loadError = errorMessage(err, 'No se pudo eliminar el operador');
+      this.loadError = errorMessage(err, 'No se pudo actualizar el operador');
     }
   }
 }

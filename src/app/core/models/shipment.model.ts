@@ -49,6 +49,10 @@ export interface AlertItem {
   message: string;
   timestamp: string;
   resolved: boolean;
+  /** Datos de desvío térmico (solo TEMP_BREACH). */
+  temperature?: number;
+  minTemp?: number;
+  maxTemp?: number;
 }
 
 export interface AuditReport {
@@ -70,7 +74,11 @@ export interface AuditReport {
 }
 
 export interface Operator {
-  id: string;
+  operatorId: string;
   name: string;
   email: string;
+  phone: string | null;
+  status: 'ACTIVE' | 'INVITED' | 'INACTIVE';
+  completedDeliveries: number;
+  custodyRating: number | null;
 }
