@@ -23,6 +23,7 @@ interface ApiAudit {
   thermalHistory: ApiReading[];
   accessAttempts: { action: string; result: string; timestamp: string }[];
   openingEvents: { lidOpen: boolean; authorized: boolean | null; forced: boolean; timestamp: string }[];
+  evidence?: { photoUrl?: string | null; photoBase64?: string | null; uploadedAt?: string } | null;
   securityAlerts: { type: string; message: string; severity: string; timestamp: string; resolved: boolean }[];
 }
 interface ApiReading {
@@ -325,6 +326,15 @@ export class TelemetryService {
     }
   }
 
+  /** OTP vigente del envío, para dar soporte al cliente. */
+  async otpFor(displayId: string): Promise<{ code: string; state: 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED' } | null> {
+    try {
+      return await firstValueFrom(this.http.get<{ code: string; state: 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED' }>(`${API.security}/otp?orderId=${displayId.replace('#', '')}`));
+    } catch {
+      return null;
+    }
+  }
+
   /** Todos los envíos (más recientes primero); los reportes se piden por páginas. */
   historyOrders(): Promise<ApiOrder[]> {
     return firstValueFrom(this.http.get<ApiOrder[]>(`${API.orders}`));
@@ -365,6 +375,7 @@ export class TelemetryService {
           },
           accessAttempts: a.accessAttempts ?? [],
           tamperEvents: a.openingEvents ?? [],
+          evidence: a.evidence && (a.evidence.photoBase64 || a.evidence.photoUrl) ? { photo: (a.evidence.photoBase64 || a.evidence.photoUrl)!, uploadedAt: a.evidence.uploadedAt ?? '' } : null,
           thermalAlerts: (a.securityAlerts ?? []).filter(x => x.type === 'THERMAL_BREACH')
         } as AuditReport;
       })

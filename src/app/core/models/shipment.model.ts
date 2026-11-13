@@ -70,6 +70,8 @@ export interface AuditReport {
   thermal: { readings: number; min: number | null; max: number | null; average: number | null; breaches: number; compliant: boolean };
   accessAttempts: { action: string; result: string; timestamp: string }[];
   tamperEvents: { lidOpen: boolean; authorized: boolean | null; forced: boolean; timestamp: string }[];
+  /** Foto de entrega (data URL o URL); null si aún no se sincroniza. */
+  evidence: { photo: string; uploadedAt: string } | null;
   thermalAlerts: { message: string; severity: string; timestamp: string; resolved: boolean }[];
 }
 

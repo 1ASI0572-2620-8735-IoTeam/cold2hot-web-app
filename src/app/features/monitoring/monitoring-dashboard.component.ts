@@ -107,6 +107,9 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
                 >
                   {{ selectedShipment.thermalStatus === 'OPTIMAL' ? t('status_in_range') : t('status_out_of_range') }}
                 </span>
+                <span *ngIf="otp() as o" class="status-chip chip-neutral" title="Código de apertura para soporte">
+                  OTP {{ o.code }} · {{ otpLabel(o.state) }}
+                </span>
               </div>
             </div>
 
@@ -474,7 +477,10 @@ export class MonitoringDashboardComponent {
     // Enlace directo desde otras vistas: /dashboard/monitoring?envio=C2H-10486 abre el detalle en vivo.
     this.route.queryParamMap.subscribe(p => {
       const id = p.get('envio');
-      if (id) this.selectedId = '#' + id.replace('#', '');
+      if (id) {
+        this.selectedId = '#' + id.replace('#', '');
+        this.loadOtp();
+      }
     });
   }
   /** Referencia viva al envío seleccionado: se actualiza con cada ciclo de polling. */
@@ -483,6 +489,7 @@ export class MonitoringDashboardComponent {
   }
   set selectedShipment(s: Shipment | null) {
     this.selectedId = s ? s.id : null;
+    this.loadOtp();
     if (!s && this.route.snapshot.queryParamMap.has('envio')) {
       this.router.navigate([], { queryParams: { envio: null }, queryParamsHandling: 'merge', replaceUrl: true });
     }
@@ -515,6 +522,14 @@ export class MonitoringDashboardComponent {
 
   setFilter(filter: 'ALL' | 'HOT' | 'COLD' | 'BREACH') {
     this.activeFilter.set(filter);
+  }
+
+  otp = signal<{ code: string; state: 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED' } | null>(null);
+  otpLabel = (st: string) => (st === 'ACTIVE' ? 'vigente' : st === 'USED' ? 'usado' : st === 'EXPIRED' ? 'vencido' : 'revocado');
+
+  private async loadOtp() {
+    this.otp.set(null);
+    if (this.selectedId) this.otp.set(await this.telemetryService.otpFor(this.selectedId));
   }
 
   deliveryError = '';

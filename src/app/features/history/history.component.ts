@@ -61,14 +61,33 @@ import { TelemetryService } from '../../core/services/telemetry.service';
           <span class="c-num">{{ r.thermal.readings }}</span>
           <span class="c-state" [class.bad]="!ok(r)">{{ ok(r) ? 'Íntegra' : (r.thermal.breaches ? r.thermal.breaches + (r.thermal.breaches === 1 ? ' desvío' : ' desvíos') : 'Con alertas') }}</span>
           <span class="c-status">{{ r.status === 'DELIVERED' ? 'Entregado' : r.status === 'IN_TRANSIT' ? 'En ruta' : 'Cancelado' }}</span>
-          <button class="icon-btn" type="button" (click)="export(r)" [attr.aria-label]="'Exportar reporte de ' + r.shipmentId" title="Exportar reporte">
-            <app-icon name="download" [size]="17" />
-          </button>
+          <span class="acts">
+            <button class="icon-btn" type="button" [disabled]="!r.evidence" (click)="evidence.set(r)" [attr.aria-label]="'Ver evidencia de ' + r.shipmentId" [title]="r.evidence ? 'Ver foto de entrega' : 'Sin evidencia'">
+              <app-icon name="image" [size]="17" />
+            </button>
+            <button class="icon-btn" type="button" (click)="export(r)" [attr.aria-label]="'Exportar reporte de ' + r.shipmentId" title="Exportar reporte">
+              <app-icon name="download" [size]="17" />
+            </button>
+          </span>
         </div>
         <button *ngIf="total() > reports().length" type="button" class="more" (click)="more()" [disabled]="loadingMore">
           Mostrar más ({{ total() - reports().length }})
         </button>
       </section>
+    </div>
+
+    <div *ngIf="evidence() as e" class="lightbox" (click)="evidence.set(null)" role="dialog" aria-label="Evidencia de entrega">
+      <figure class="lb-card" (click)="$event.stopPropagation()">
+        <figcaption>
+          <strong>#{{ e.shipmentId }}</strong>
+          <span>{{ e.evidence!.uploadedAt ? (e.evidence!.uploadedAt | date: 'dd/MM/yyyy HH:mm') : '' }}</span>
+        </figcaption>
+        <img [src]="e.evidence!.photo" alt="Foto de entrega" />
+        <div class="lb-actions">
+          <a class="btn btn-secondary" [href]="e.evidence!.photo" [download]="'Evidencia-' + e.shipmentId">Descargar foto</a>
+          <button type="button" class="btn btn-dark" (click)="evidence.set(null)">Cerrar</button>
+        </div>
+      </figure>
     </div>
   `,
   styles: [`
@@ -90,7 +109,7 @@ import { TelemetryService } from '../../core/services/telemetry.service';
     .more:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
     .empty { padding: 28px 22px; color: var(--muted); font-size: 14px; }
 
-    .rows-head, .row { display: grid; grid-template-columns: minmax(170px, 1.6fr) 1.6fr 0.6fr 0.9fr 0.8fr 40px; gap: 14px; align-items: center; padding: 0 22px; }
+    .rows-head, .row { display: grid; grid-template-columns: minmax(170px, 1.6fr) 1.6fr 0.6fr 0.9fr 0.8fr 84px; gap: 14px; align-items: center; padding: 0 22px; }
     .rows-head { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
     .row { min-height: 66px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
     .row:last-of-type { border-bottom: 0; }
@@ -109,6 +128,14 @@ import { TelemetryService } from '../../core/services/telemetry.service';
     .c-state { color: var(--muted); }
     .c-state.bad { color: var(--hot-strong); font-weight: 600; }
     .icon-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--white); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; transition: all .2s ease; }
+    .acts { display: inline-flex; gap: 8px; justify-content: flex-end; }
+    .icon-btn:disabled { opacity: .35; pointer-events: none; }
+    .lightbox { position: fixed; inset: 0; z-index: 100; background: rgba(14, 23, 38, .6); display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .lb-card { margin: 0; background: var(--white); border-radius: 22px; padding: 20px; max-width: 560px; width: 100%; display: flex; flex-direction: column; gap: 14px; }
+    .lb-card figcaption { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); }
+    .lb-card figcaption strong { color: var(--ink); font-weight: 600; }
+    .lb-card img { width: 100%; max-height: 60vh; object-fit: contain; border-radius: 14px; background: var(--bg-alt); }
+    .lb-actions { display: flex; gap: 10px; justify-content: flex-end; }
     .icon-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
 
     @media (max-width: 760px) {
@@ -121,7 +148,7 @@ import { TelemetryService } from '../../core/services/telemetry.service';
       .list-head { padding: 12px 16px; }
       .row { grid-template-columns: 1fr auto; grid-template-areas: 'id act' 'range state'; row-gap: 8px; padding: 14px 16px; }
       .c-id { grid-area: id; }
-      .icon-btn { grid-area: act; }
+      .acts { grid-area: act; }
       .c-range { grid-area: range; }
       .c-state { grid-area: state; justify-self: end; }
       .c-num, .c-status { display: none; }
@@ -132,6 +159,7 @@ export class HistoryComponent implements OnInit {
   private telemetry = inject(TelemetryService);
 
   reports = signal<AuditReport[]>([]);
+  evidence = signal<AuditReport | null>(null);
   readonly PAGE = 25;
   shown = signal(this.PAGE);
   page = computed(() => this.reports().slice(0, this.shown()));
@@ -205,6 +233,7 @@ Creado: ${fmt(r.createdAt)}${r.deliveredAt ? '\nEntregado: ' + fmt(r.deliveredAt
 RESUMEN TÉRMICO
 Lecturas: ${r.thermal.readings} | Mínima: ${r.thermal.min ?? 'n/d'}°C | Máxima: ${r.thermal.max ?? 'n/d'}°C | Promedio: ${r.thermal.average ?? 'n/d'}°C
 Lecturas fuera de rango: ${r.thermal.breaches}
+Evidencia de entrega: ${r.evidence ? 'foto adjunta (descargable desde el Historial)' : 'pendiente'}
 Estado de Custodia: ${r.thermal.compliant && !r.thermalAlerts.length ? 'INTEGRIDAD VERIFICADA' : 'DESVÍO TÉRMICO DETECTADO'}
 
 ALERTAS TÉRMICAS
