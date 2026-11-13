@@ -143,7 +143,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
                   <div class="temp-cell">
                     <div class="temp-header">
                       <span class="temp-num font-display" [class.text-danger]="s.thermalStatus === 'BREACH'">
-                        {{ s.currentTemp }}°C
+                        {{ s.currentTemp ?? '--' }}°C
                       </span>
                       <span
                         class="status-chip"
@@ -240,7 +240,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
               <div class="reading-meta">
                 <span class="reading-label">Temperatura actual del sensor DS18B20</span>
                 <div class="reading-value font-display" [class.text-danger]="selectedShipment.thermalStatus === 'BREACH'">
-                  {{ selectedShipment.currentTemp }}°C
+                  {{ selectedShipment.currentTemp ?? '--' }}°C
                 </div>
               </div>
               <div class="reading-badges">
@@ -289,7 +289,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
 
               <div class="chart-legend">
                 <span>Rango permitido: {{ selectedShipment.targetMinTemp }}°C - {{ selectedShipment.targetMaxTemp }}°C</span>
-                <span class="live-dot-text"><span class="pulse-dot"></span> Muestreo cada 4s</span>
+                <span class="live-dot-text"><span class="pulse-dot"></span> Actualización cada 4s</span>
               </div>
             </div>
 
@@ -313,6 +313,14 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
               (click)="exportAuditReport(selectedShipment)"
             >
               📄 Descargar Reporte de Custodia
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              style="width: 100%; margin-top: 10px;"
+              (click)="completeShipment(selectedShipment)"
+            >
+              ✅ Marcar como entregado
             </button>
           </div>
         </aside>
@@ -815,7 +823,14 @@ export class MonitoringDashboardComponent {
   availableBoxes = this.telemetryService.availableBoxesCount;
 
   activeFilter = signal<'ALL' | 'HOT' | 'COLD' | 'BREACH'>('ALL');
-  selectedShipment: Shipment | null = null;
+  private selectedId: string | null = null;
+  /** Referencia viva al envío seleccionado: se actualiza con cada ciclo de polling. */
+  get selectedShipment(): Shipment | null {
+    return this.shipments().find(s => s.id === this.selectedId) ?? null;
+  }
+  set selectedShipment(s: Shipment | null) {
+    this.selectedId = s ? s.id : null;
+  }
   showNewShipmentModal = false;
 
   filteredShipments = computed(() => {
@@ -834,6 +849,13 @@ export class MonitoringDashboardComponent {
 
   setFilter(filter: 'ALL' | 'HOT' | 'COLD' | 'BREACH') {
     this.activeFilter.set(filter);
+  }
+
+  async completeShipment(shipment: Shipment) {
+    if (!confirm(`¿Confirmar la entrega del envío ${shipment.id}? La caja ${shipment.smartBoxId} quedará disponible.`)) return;
+    const res = await this.telemetryService.completeShipment(shipment.id);
+    if (res.ok) this.selectedShipment = null;
+    else alert(res.error);
   }
 
   selectShipmentForDetail(shipment: Shipment) {
@@ -876,7 +898,7 @@ Dirección de Entrega: ${s.customerAddress}
 Caja SmartBox: ${s.smartBoxId}
 Operador Asignado: ${s.operatorName}
 Modo Térmico: ${s.thermalMode} (Rango admisible: ${s.targetMinTemp}°C - ${s.targetMaxTemp}°C)
-Temperatura Final Registrada: ${s.currentTemp}°C
+Temperatura Final Registrada: ${s.currentTemp ?? 'sin lecturas'}°C
 Estado de Custodia: ${s.thermalStatus === 'OPTIMAL' ? 'INTEGRIDAD VERIFICADA' : 'DESVÍO TÉRMICO DETECTADO'}
 Código OTP Utilizado: ${s.otpCode}
 Fecha de Emisión: ${new Date().toLocaleString()}

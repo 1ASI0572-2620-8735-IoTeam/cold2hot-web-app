@@ -1,6 +1,8 @@
 import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
 import { TranslationService, Language } from '../core/services/translation.service';
 import { AuthService } from '../core/services/auth.service';
 import { TelemetryService } from '../core/services/telemetry.service';
@@ -50,6 +52,15 @@ import { TelemetryService } from '../core/services/telemetry.service';
           <div class="nav-section-title">{{ t('nav_audit') }}</div>
           
           <a
+            routerLink="/dashboard/history"
+            routerLinkActive="active"
+            class="nav-item"
+          >
+            <span class="nav-icon">🗂️</span>
+            <span class="nav-label">{{ t('nav_history') }}</span>
+          </a>
+
+          <a
             routerLink="/dashboard/smartboxes"
             routerLinkActive="active"
             class="nav-item"
@@ -62,10 +73,9 @@ import { TelemetryService } from '../core/services/telemetry.service';
           <div class="nav-section-title">{{ t('nav_admin') }}</div>
 
           <a
-            href="#"
-            (click)="$event.preventDefault()"
-            class="nav-item nav-item-disabled"
-            title="Disponible en TB2"
+            routerLink="/dashboard/operators"
+            routerLinkActive="active"
+            class="nav-item"
           >
             <span class="nav-icon">👥</span>
             <span class="nav-label">{{ t('nav_operators') }}</span>
@@ -95,8 +105,8 @@ import { TelemetryService } from '../core/services/telemetry.service';
         <!-- TOPBAR SUPERIOR -->
         <header class="app-topbar">
           <div class="topbar-left">
-            <h1 class="page-title">{{ t('nav_monitoring') }}</h1>
-            <span class="tag-version">Sprint 1 / TB1</span>
+            <h1 class="page-title">{{ t(pageTitleKey()) }}</h1>
+            
           </div>
 
           <div class="topbar-right">
@@ -154,12 +164,15 @@ import { TelemetryService } from '../core/services/telemetry.service';
 
         <!-- CONTENIDO DE PÁGINA -->
         <main class="content-body">
+          <div *ngIf="connectionError()" class="conn-banner" role="alert">⚠️ {{ connectionError() }}</div>
           <router-outlet></router-outlet>
         </main>
       </div>
     </div>
   `,
   styles: [`
+    .conn-banner { background: var(--danger-bg); color: var(--danger-strong); padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 14px; }
+
     .app-layout {
       display: grid;
       grid-template-columns: 260px 1fr;
@@ -490,6 +503,21 @@ export class MainLayoutComponent {
   currentUser = this.authService.currentUser;
   currentLang = this.translationService.currentLang;
   criticalAlerts = this.telemetryService.criticalAlertsCount;
+  connectionError = this.telemetryService.connectionError;
+
+  private router = inject(Router);
+  private url = toSignal(
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd), map(() => this.router.url)),
+    { initialValue: this.router.url }
+  );
+  pageTitleKey = computed(() => {
+    const u = this.url();
+    if (u.includes('/alerts')) return 'nav_alerts';
+    if (u.includes('/history')) return 'nav_history';
+    if (u.includes('/smartboxes')) return 'nav_smartboxes';
+    if (u.includes('/operators')) return 'nav_operators';
+    return 'nav_monitoring';
+  });
 
   get landingPageUrl(): string {
     if (typeof window !== 'undefined') {

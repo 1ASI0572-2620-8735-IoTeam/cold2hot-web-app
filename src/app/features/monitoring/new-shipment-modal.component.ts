@@ -40,6 +40,7 @@ import { ThermalMode } from '../../core/models/shipment.model';
               <div class="form-group flex-2">
                 <label>{{ t('modal_select_box') }}</label>
                 <select [(ngModel)]="selectedBoxId" name="selectedBoxId" class="custom-select" required>
+                  <option value="" disabled>Selecciona una caja disponible</option>
                   <option *ngFor="let box of availableBoxes" [value]="box.id">
                     {{ box.id }} · {{ box.serialNumber }} (Batería: {{ box.batteryLevel }}%)
                   </option>
@@ -116,12 +117,14 @@ import { ThermalMode } from '../../core/models/shipment.model';
               </div>
             </div>
 
+            <p *ngIf="errorMsg" class="modal-error">{{ errorMsg }}</p>
+
             <!-- Botones de Acción -->
             <div class="modal-actions">
               <button type="button" class="btn btn-secondary" (click)="close()">
                 {{ t('modal_cancel') }}
               </button>
-              <button type="submit" class="btn btn-primary" [disabled]="!deliveryAddress || !selectedBoxId">
+              <button type="submit" class="btn btn-primary" [disabled]="!deliveryAddress || !selectedBoxId || submitting">
                 {{ t('modal_create') }}
               </button>
             </div>
@@ -160,6 +163,8 @@ import { ThermalMode } from '../../core/models/shipment.model';
     </div>
   `,
   styles: [`
+    .modal-error { color: var(--danger-strong); font-size: 13px; margin: 8px 0 0; }
+
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -403,9 +408,9 @@ import { ThermalMode } from '../../core/models/shipment.model';
 export class NewShipmentModalComponent {
   @Output() closed = new EventEmitter<void>();
 
-  orderId = '#C2H-' + Math.floor(10000 + Math.random() * 90000);
+  orderId = 'Se asigna al confirmar';
   deliveryAddress = '';
-  selectedBoxId = 'SB-002';
+  selectedBoxId = '';
   selectedMode: ThermalMode = 'HOT';
   minTemp = 65.0;
   maxTemp = 80.0;
@@ -414,7 +419,7 @@ export class NewShipmentModalComponent {
   copied = false;
 
   get availableBoxes() {
-    return this.telemetryService.smartBoxes().filter(b => b.status === 'AVAILABLE');
+    return this.telemetryService.smartBoxes().filter(b => b.status === 'AVAILABLE' && b.batteryLevel >= 15);
   }
 
   constructor(
@@ -437,8 +442,13 @@ export class NewShipmentModalComponent {
     }
   }
 
-  onSubmit() {
-    const res = this.telemetryService.createShipment({
+  submitting = false;
+  errorMsg = '';
+
+  async onSubmit() {
+    this.submitting = true;
+    this.errorMsg = '';
+    const res = await this.telemetryService.createShipment({
       address: this.deliveryAddress,
       thermalMode: this.selectedMode,
       minTemp: this.minTemp,
@@ -446,7 +456,13 @@ export class NewShipmentModalComponent {
       smartBoxId: this.selectedBoxId
     });
 
-    this.createdOtp = res.otpCode;
+    this.submitting = false;
+    if (res.ok && res.otpCode) {
+      this.orderId = '#' + res.shipmentId;
+      this.createdOtp = res.otpCode;
+    } else {
+      this.errorMsg = res.error || 'No se pudo crear el despacho';
+    }
   }
 
   copyOtp() {
