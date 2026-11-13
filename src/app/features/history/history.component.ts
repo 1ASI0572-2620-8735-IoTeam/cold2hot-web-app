@@ -1,3 +1,4 @@
+import { RevealDirective } from '../../shared/reveal.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuditReport } from '../../core/models/shipment.model';
@@ -6,7 +7,7 @@ import { TelemetryService } from '../../core/services/telemetry.service';
 @Component({
   selector: 'app-history',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RevealDirective],
   template: `
     <div class="hist-container">
       <div class="hist-header">
@@ -29,7 +30,7 @@ import { TelemetryService } from '../../core/services/telemetry.service';
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let r of reports()">
+            <tr *ngFor="let r of reports(); let i = index" [appReveal]="i">
               <td class="mono">#{{ r.shipmentId }}</td>
               <td>{{ r.customerAddress }}</td>
               <td>{{ r.smartBoxId }}</td>

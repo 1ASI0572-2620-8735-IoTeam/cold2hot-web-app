@@ -1,3 +1,4 @@
+import { RevealDirective } from '../../shared/reveal.directive';
 import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslationService } from '../../core/services/translation.service';
@@ -8,14 +9,14 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
 @Component({
   selector: 'app-monitoring-dashboard',
   standalone: true,
-  imports: [CommonModule, NewShipmentModalComponent],
+  imports: [CommonModule, NewShipmentModalComponent, RevealDirective],
   template: `
     <div class="monitoring-container">
       
       <!-- 1. TARJETAS DE MÉTRICAS KPI (Figma W04) -->
       <section class="kpi-grid" aria-label="Resumen operativo">
         <!-- KPI: Total Envíos -->
-        <div class="card kpi-card">
+        <div class="card kpi-card" [appReveal]="0">
           <div class="kpi-meta">
             <span class="kpi-label">{{ t('kpi_total_active') }}</span>
             <span class="kpi-value">{{ totalActive() }}</span>
@@ -24,7 +25,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
         </div>
 
         <!-- KPI: En Ruta -->
-        <div class="card kpi-card">
+        <div class="card kpi-card" [appReveal]="1">
           <div class="kpi-meta">
             <span class="kpi-label">{{ t('kpi_in_transit') }}</span>
             <span class="kpi-value">{{ inTransit() }}</span>
@@ -33,7 +34,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
         </div>
 
         <!-- KPI: Alertas Críticas -->
-        <div class="card kpi-card" [class.alert-glow]="criticalAlerts() > 0">
+        <div class="card kpi-card" [appReveal]="2" [class.alert-glow]="criticalAlerts() > 0">
           <div class="kpi-meta">
             <span class="kpi-label">{{ t('kpi_critical_alerts') }}</span>
             <span class="kpi-value text-danger">{{ criticalAlerts() }}</span>
@@ -42,7 +43,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
         </div>
 
         <!-- KPI: Cajas Disponibles -->
-        <div class="card kpi-card">
+        <div class="card kpi-card" [appReveal]="3">
           <div class="kpi-meta">
             <span class="kpi-label">{{ t('kpi_boxes_available') }}</span>
             <span class="kpi-value text-ok">{{ availableBoxes() }}</span>
@@ -118,7 +119,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let s of filteredShipments()" [class.row-alert]="s.thermalStatus === 'BREACH'">
+              <tr *ngFor="let s of filteredShipments(); let i = index; trackBy: trackShipment" [appReveal]="i" [class.row-alert]="s.thermalStatus === 'BREACH'">
                 <!-- Pedido -->
                 <td>
                   <div class="order-id-cell">
@@ -846,6 +847,8 @@ export class MonitoringDashboardComponent {
   t(key: string): string {
     return this.translationService.translate(key);
   }
+
+  trackShipment = (_: number, s: Shipment) => s.id;
 
   setFilter(filter: 'ALL' | 'HOT' | 'COLD' | 'BREACH') {
     this.activeFilter.set(filter);

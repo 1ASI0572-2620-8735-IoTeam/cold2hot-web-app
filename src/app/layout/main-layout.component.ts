@@ -4,13 +4,14 @@ import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map } from 'rxjs';
 import { TranslationService, Language } from '../core/services/translation.service';
+import { IconComponent } from '../shared/icon.component';
 import { AuthService } from '../core/services/auth.service';
 import { TelemetryService } from '../core/services/telemetry.service';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, IconComponent],
   template: `
     <div class="app-layout">
       <!-- SIDEBAR LATERAL (Figma W04: #0E1726) -->
@@ -30,7 +31,7 @@ import { TelemetryService } from '../core/services/telemetry.service';
             routerLinkActive="active"
             class="nav-item"
           >
-            <span class="nav-icon">📊</span>
+            <span class="nav-icon"><app-icon name="gauge" [size]="19" /></span>
             <span class="nav-label">{{ t('nav_monitoring') }}</span>
           </a>
 
@@ -39,7 +40,7 @@ import { TelemetryService } from '../core/services/telemetry.service';
             routerLinkActive="active"
             class="nav-item"
           >
-            <span class="nav-icon">⚠️</span>
+            <span class="nav-icon"><app-icon name="bell" [size]="19" /></span>
             <span class="nav-label">{{ t('nav_alerts') }}</span>
             <span class="alert-badge" *ngIf="criticalAlerts() > 0">{{ criticalAlerts() }}</span>
           </a>
@@ -52,7 +53,7 @@ import { TelemetryService } from '../core/services/telemetry.service';
             routerLinkActive="active"
             class="nav-item"
           >
-            <span class="nav-icon">🗂️</span>
+            <span class="nav-icon"><app-icon name="history" [size]="19" /></span>
             <span class="nav-label">{{ t('nav_history') }}</span>
           </a>
 
@@ -61,7 +62,7 @@ import { TelemetryService } from '../core/services/telemetry.service';
             routerLinkActive="active"
             class="nav-item"
           >
-            <span class="nav-icon">📦</span>
+            <span class="nav-icon"><app-icon name="package" [size]="19" /></span>
             <span class="nav-label">{{ t('nav_smartboxes') }}</span>
           </a>
 
@@ -73,17 +74,16 @@ import { TelemetryService } from '../core/services/telemetry.service';
             routerLinkActive="active"
             class="nav-item"
           >
-            <span class="nav-icon">👥</span>
+            <span class="nav-icon"><app-icon name="users" [size]="19" /></span>
             <span class="nav-label">{{ t('nav_operators') }}</span>
           </a>
 
           <a
-            href="#"
-            (click)="$event.preventDefault()"
-            class="nav-item nav-item-disabled"
-            title="Disponible en TB2"
+            routerLink="/dashboard/settings"
+            routerLinkActive="active"
+            class="nav-item"
           >
-            <span class="nav-icon">⚙️</span>
+            <span class="nav-icon"><app-icon name="settings" [size]="19" /></span>
             <span class="nav-label">{{ t('nav_settings') }}</span>
           </a>
         </nav>
@@ -288,6 +288,7 @@ import { TelemetryService } from '../core/services/telemetry.service';
     }
 
     .nav-icon {
+      display: inline-flex;
       font-size: 16px;
     }
 
@@ -514,6 +515,7 @@ export class MainLayoutComponent {
     if (u.includes('/history')) return 'nav_history';
     if (u.includes('/smartboxes')) return 'nav_smartboxes';
     if (u.includes('/operators')) return 'nav_operators';
+    if (u.includes('/settings')) return 'nav_settings';
     return 'nav_monitoring';
   });
 

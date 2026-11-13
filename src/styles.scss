@@ -202,3 +202,64 @@ h1, h2, h3, .font-display {
   padding: 24px;
   box-shadow: var(--shadow-sm);
 }
+
+/* ---------- Pulido visual (ui-ux-pro-max): interacción, foco y movimiento ---------- */
+:focus-visible {
+  outline: 2px solid var(--hot);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+button,
+a,
+select,
+[role='button'],
+[role='radio'] {
+  cursor: pointer;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.card {
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+
+  &:hover {
+    box-shadow: var(--shadow-card);
+    border-color: #d5dce6;
+  }
+}
+
+/* Cifras alineadas para que la telemetría no "salte" al actualizarse */
+.temp-num,
+.reading-value,
+.log-temp,
+.kpi-value,
+td,
+.font-display {
+  font-variant-numeric: tabular-nums;
+}
+
+tbody tr {
+  transition: background-color 0.18s ease;
+
+  &:hover {
+    background-color: rgba(14, 23, 38, 0.025);
+  }
+}
+
+::selection {
+  background: var(--hot-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

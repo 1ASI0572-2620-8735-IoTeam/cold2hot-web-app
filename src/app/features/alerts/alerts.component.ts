@@ -1,3 +1,4 @@
+import { RevealDirective } from '../../shared/reveal.directive';
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslationService } from '../../core/services/translation.service';
@@ -7,7 +8,7 @@ import { AlertItem } from '../../core/models/shipment.model';
 @Component({
   selector: 'app-alerts',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RevealDirective],
   template: `
     <div class="alerts-container">
       <div class="alerts-header">
@@ -24,7 +25,7 @@ import { AlertItem } from '../../core/models/shipment.model';
         </div>
 
         <div
-          *ngFor="let alert of alerts()"
+          *ngFor="let alert of alerts(); let i = index; trackBy: trackAlert" [appReveal]="i"
           class="alert-card card"
           [class.resolved]="alert.resolved"
           [class.critical-border]="alert.severity === 'CRITICAL' && !alert.resolved"
@@ -215,6 +216,8 @@ export class AlertsComponent {
   t(key: string): string {
     return this.translationService.translate(key);
   }
+
+  trackAlert = (_: number, a: { id: string }) => a.id;
 
   resolveAlert(id: string) {
     this.telemetryService.resolveAlert(id);

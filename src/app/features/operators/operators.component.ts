@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { RevealDirective } from '../../shared/reveal.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -10,7 +11,7 @@ import { errorMessage } from '../../core/services/auth.service';
 @Component({
   selector: 'app-operators',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RevealDirective],
   template: `
     <div class="ops-container">
       <div class="ops-header">
@@ -37,7 +38,7 @@ import { errorMessage } from '../../core/services/auth.service';
             <tr><th>Nombre</th><th>Correo</th><th></th></tr>
           </thead>
           <tbody>
-            <tr *ngFor="let o of operators()">
+            <tr *ngFor="let o of operators(); let i = index" [appReveal]="i">
               <td>{{ o.name }}</td>
               <td>{{ o.email }}</td>
               <td class="right"><button class="btn btn-danger" (click)="remove(o)">Eliminar</button></td>

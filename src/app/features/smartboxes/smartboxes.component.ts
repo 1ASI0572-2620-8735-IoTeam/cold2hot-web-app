@@ -1,3 +1,4 @@
+import { RevealDirective } from '../../shared/reveal.directive';
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -8,7 +9,7 @@ import { SmartBox } from '../../core/models/shipment.model';
 @Component({
   selector: 'app-smartboxes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RevealDirective],
   template: `
     <div class="smartboxes-container">
       <div class="smartboxes-header">
@@ -30,7 +31,7 @@ import { SmartBox } from '../../core/models/shipment.model';
       </form>
 
       <div class="boxes-grid">
-        <div *ngFor="let box of smartBoxes()" class="box-card card">
+        <div *ngFor="let box of smartBoxes(); let i = index; trackBy: trackBox" [appReveal]="i" class="box-card card">
           <div class="box-top">
             <div class="box-id-tag font-display">{{ box.id }}</div>
             <span
@@ -236,6 +237,8 @@ export class SmartBoxesComponent {
   t(key: string): string {
     return this.translationService.translate(key);
   }
+
+  trackBox = (_: number, b: SmartBox) => b.id;
 
   showForm = false;
   serialNumber = '';
