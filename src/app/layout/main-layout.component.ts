@@ -118,7 +118,7 @@ interface NavLink {
     .brand-icon { width: 34px; height: 34px; object-fit: contain; }
     .brand-word { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; color: var(--ink); }
     .w-cold { color: var(--cold); }
-    .w-two { color: #1B2F6B; }
+    .w-two { color: #0E1726; }
     .w-hot { color: var(--hot); }
 
     .nav { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }

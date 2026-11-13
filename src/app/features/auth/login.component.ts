@@ -401,7 +401,7 @@ import { TranslationService } from '../../core/services/translation.service';
     .brand-icon { width: 44px; height: 44px; object-fit: contain; }
     .brand-word { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
     .w-cold { color: var(--cold); }
-    .w-two { color: #1B2F6B; }
+    .w-two { color: #0E1726; }
     .w-hot { color: var(--hot); }
     .brand-badge { background: var(--white) !important; color: var(--cold-strong) !important; border: 1px solid rgba(56,189,248,.35); }
     .brand-hero-title { color: var(--ink) !important; font-weight: 700; letter-spacing: -0.03em; }
