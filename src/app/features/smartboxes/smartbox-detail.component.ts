@@ -46,7 +46,7 @@ const STATUS_LABEL: Record<string, string> = {
         </figure>
 
         <section class="card k k-temp" [appReveal]="1">
-          <div class="k-head"><span class="k-label">Temperatura</span><span class="arrow">↗</span></div>
+          <div class="k-head"><span class="k-label">Temperatura</span></div>
           <div class="k-body">
             <span class="k-num">{{ temp() === null ? '—' : (temp()! | number: '1.1-1') + '°' }}</span>
             <svg *ngIf="spark().line" viewBox="0 0 120 50" class="spark" aria-hidden="true">
@@ -58,7 +58,7 @@ const STATUS_LABEL: Record<string, string> = {
         </section>
 
         <section class="card k k-bat" [appReveal]="2">
-          <div class="k-head"><span class="k-label">Batería</span><span class="arrow">↗</span></div>
+          <div class="k-head"><span class="k-label">Batería</span></div>
           <div class="k-body">
             <span class="k-num">{{ b.batteryLevel }}%</span>
             <svg viewBox="0 0 80 80" class="ring" aria-hidden="true">
@@ -71,7 +71,7 @@ const STATUS_LABEL: Record<string, string> = {
         </section>
 
         <section class="card k k-lock" [appReveal]="3">
-          <div class="k-head"><span class="k-label">Cerrojo</span><span class="arrow">↗</span></div>
+          <div class="k-head"><span class="k-label">Cerrojo</span></div>
           <div class="k-body">
             <span class="k-num sm">{{ lockLabel() }}</span>
             <span class="lock-ico" [class.open]="shipment()?.lockStatus === 'UNLOCKED'">
@@ -82,7 +82,7 @@ const STATUS_LABEL: Record<string, string> = {
         </section>
 
         <section class="card k k-alert" [appReveal]="4">
-          <div class="k-head"><span class="k-label">Alertas</span><span class="arrow">↗</span></div>
+          <div class="k-head"><span class="k-label">Alertas</span></div>
           <div class="k-body">
             <span class="k-num">{{ openAlerts().length < 10 ? '0' : '' }}{{ openAlerts().length }}</span>
             <span class="k-tag"><i class="dot" [class.bad]="openAlerts().length > 0"></i>{{ openAlerts().length ? 'Abiertas' : 'Sin alertas' }}</span>
@@ -152,7 +152,7 @@ const STATUS_LABEL: Record<string, string> = {
       align-items: stretch;
       position: relative;
     }
-    .city { position: absolute; left: 50%; top: 50%; width: 92%; max-width: 1100px; transform: translate(-50%, -52%); pointer-events: none; user-select: none; z-index: 0; }
+    .city { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; z-index: 0; }
     .stage > :not(.city) { position: relative; z-index: 1; }
     .k-temp { grid-area: temp; } .k-bat { grid-area: bat; } .k-lock { grid-area: lock; } .k-alert { grid-area: alert; }
     .hero { grid-area: hero; margin: 0; position: relative; display: flex; align-items: center; justify-content: center; min-height: 320px; }
@@ -162,7 +162,6 @@ const STATUS_LABEL: Record<string, string> = {
     .k { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; border-radius: 22px; }
     .k-head { display: flex; justify-content: space-between; align-items: center; }
     .k-label { font-size: 15px; font-weight: 500; color: var(--ink-2); }
-    .arrow { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); }
     .k-body { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; }
     .k-num { font-size: 44px; font-weight: 500; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
     .k-num.sm { font-size: 32px; }
