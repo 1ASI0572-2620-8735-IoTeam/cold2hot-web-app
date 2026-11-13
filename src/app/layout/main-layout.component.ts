@@ -23,9 +23,9 @@ interface NavLink {
       <!-- BARRA SUPERIOR -->
       <header class="topbar">
         <div class="topbar-inner">
-          <a routerLink="/dashboard/monitoring" class="brand" aria-label="Cold2Hot, ir a Monitoreo">
+          <a routerLink="/dashboard/monitoring" class="brand" aria-label="C2H, ir a Monitoreo">
             <img src="brand/icon.png" alt="" class="brand-icon" width="34" height="34" />
-            <span class="brand-word"><span class="w-cold">Cold</span><span class="w-two">2</span><span class="w-hot">Hot</span></span>
+            <span class="brand-word"><span class="w-cold">C</span><span class="w-two">2</span><span class="w-hot">H</span></span>
           </a>
 
           <nav class="nav" aria-label="Navegación principal">
@@ -117,7 +117,8 @@ interface NavLink {
     .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; flex: none; }
     .brand-icon { width: 34px; height: 34px; object-fit: contain; }
     .brand-word { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; color: var(--ink); }
-    .w-two { color: var(--cold-strong); }
+    .w-cold { color: var(--cold); }
+    .w-two { color: #1B2F6B; }
     .w-hot { color: var(--hot); }
 
     .nav { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }

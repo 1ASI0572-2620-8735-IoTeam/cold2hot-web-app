@@ -35,7 +35,7 @@ const STATUS_LABEL: Record<string, string> = {
           <h2 class="title">{{ b.id }}</h2>
           <p class="sub"><i class="dot" [class.on]="b.status === 'IN_TRANSIT'"></i>{{ statusLabel() }} · {{ b.serialNumber }}</p>
         </div>
-        <a *ngIf="shipment() as s" class="btn btn-dark" routerLink="/dashboard/monitoring">Ver envío {{ s.id }}</a>
+        <a *ngIf="shipment() as s" class="btn btn-dark" routerLink="/dashboard/monitoring" [queryParams]="{ envio: s.id.replace('#', '') }">Ver envío {{ s.id }}</a>
       </header>
 
       <div class="stage">

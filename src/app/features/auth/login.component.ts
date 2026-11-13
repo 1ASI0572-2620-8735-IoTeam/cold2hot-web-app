@@ -16,7 +16,7 @@ import { TranslationService } from '../../core/services/translation.service';
         <div class="brand-header">
           <div class="logo-box">
             <img class="brand-icon" src="brand/icon.png" alt="" width="44" height="44" />
-            <span class="brand-word"><span class="w-cold">Cold</span><span class="w-two">2</span><span class="w-hot">Hot</span></span>
+            <span class="brand-word"><span class="w-cold">C</span><span class="w-two">2</span><span class="w-hot">H</span></span>
           </div>
           <div class="brand-badge">IoT Platform</div>
         </div>
@@ -400,7 +400,8 @@ import { TranslationService } from '../../core/services/translation.service';
     .logo-box { display: flex; align-items: center; gap: 12px; }
     .brand-icon { width: 44px; height: 44px; object-fit: contain; }
     .brand-word { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
-    .w-two { color: var(--cold-strong); }
+    .w-cold { color: var(--cold); }
+    .w-two { color: #1B2F6B; }
     .w-hot { color: var(--hot); }
     .brand-badge { background: var(--white) !important; color: var(--cold-strong) !important; border: 1px solid rgba(56,189,248,.35); }
     .brand-hero-title { color: var(--ink) !important; font-weight: 700; letter-spacing: -0.03em; }

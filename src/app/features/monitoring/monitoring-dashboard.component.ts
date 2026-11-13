@@ -4,6 +4,7 @@ import { TemperatureStripComponent } from './temperature-strip.component';
 import { CustodyOverviewComponent } from './custody-overview.component';
 import { FleetInsightsComponent } from './fleet-insights.component';
 import { Component, signal, computed, inject } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { TranslationService } from '../../core/services/translation.service';
 import { TelemetryService } from '../../core/services/telemetry.service';
@@ -465,13 +466,26 @@ export class MonitoringDashboardComponent {
   availableBoxes = this.telemetryService.availableBoxesCount;
 
   activeFilter = signal<'ALL' | 'HOT' | 'COLD' | 'BREACH'>('ALL');
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private selectedId: string | null = null;
+
+  constructor() {
+    // Enlace directo desde otras vistas: /dashboard/monitoring?envio=C2H-10486 abre el detalle en vivo.
+    this.route.queryParamMap.subscribe(p => {
+      const id = p.get('envio');
+      if (id) this.selectedId = '#' + id.replace('#', '');
+    });
+  }
   /** Referencia viva al envío seleccionado: se actualiza con cada ciclo de polling. */
   get selectedShipment(): Shipment | null {
     return this.shipments().find(s => s.id === this.selectedId) ?? null;
   }
   set selectedShipment(s: Shipment | null) {
     this.selectedId = s ? s.id : null;
+    if (!s && this.route.snapshot.queryParamMap.has('envio')) {
+      this.router.navigate([], { queryParams: { envio: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    }
   }
   showNewShipmentModal = false;
 
