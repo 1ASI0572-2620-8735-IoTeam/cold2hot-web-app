@@ -39,6 +39,7 @@ const STATUS_LABEL: Record<string, string> = {
       </header>
 
       <div class="stage">
+        <img class="city" src="brand/smartbox-bg.png" alt="" aria-hidden="true" />
         <figure class="hero" appReveal>
           <div class="shadow"></div>
           <img src="brand/smartbox.png" alt="SmartBox Cold2Hot por dentro: ESP32, relés, ventiladores y sensor de temperatura" />
@@ -149,7 +150,10 @@ const STATUS_LABEL: Record<string, string> = {
       grid-template-areas: 'temp hero lock' 'bat hero alert';
       gap: 16px;
       align-items: stretch;
+      position: relative;
     }
+    .city { position: absolute; left: 50%; top: 50%; width: 92%; max-width: 1100px; transform: translate(-50%, -52%); pointer-events: none; user-select: none; z-index: 0; }
+    .stage > :not(.city) { position: relative; z-index: 1; }
     .k-temp { grid-area: temp; } .k-bat { grid-area: bat; } .k-lock { grid-area: lock; } .k-alert { grid-area: alert; }
     .hero { grid-area: hero; margin: 0; position: relative; display: flex; align-items: center; justify-content: center; min-height: 320px; }
     .hero img { position: relative; width: 100%; max-width: 420px; height: auto; display: block; }
