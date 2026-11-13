@@ -2,6 +2,7 @@ import { RevealDirective } from '../../shared/reveal.directive';
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { TranslationService } from '../../core/services/translation.service';
 import { TelemetryService } from '../../core/services/telemetry.service';
 import { SmartBox } from '../../core/models/shipment.model';
@@ -9,7 +10,7 @@ import { SmartBox } from '../../core/models/shipment.model';
 @Component({
   selector: 'app-smartboxes',
   standalone: true,
-  imports: [CommonModule, FormsModule, RevealDirective],
+  imports: [CommonModule, FormsModule, RouterModule, RevealDirective],
   template: `
     <div class="smartboxes-container">
       <div class="smartboxes-header">
@@ -31,7 +32,7 @@ import { SmartBox } from '../../core/models/shipment.model';
       </form>
 
       <div class="boxes-grid">
-        <div *ngFor="let box of smartBoxes(); let i = index; trackBy: trackBox" [appReveal]="i" class="box-card card">
+        <a *ngFor="let box of smartBoxes(); let i = index; trackBy: trackBox" [appReveal]="i" class="box-card card" [routerLink]="[box.id]">
           <div class="box-top">
             <div class="box-id-tag font-display">{{ box.id }}</div>
             <span
@@ -72,7 +73,7 @@ import { SmartBox } from '../../core/models/shipment.model';
             </div>
             <span class="heartbeat-text">Latido: {{ box.lastHeartbeat }}</span>
           </div>
-        </div>
+        </a>
       </div>
     </div>
   `,
@@ -110,6 +111,7 @@ import { SmartBox } from '../../core/models/shipment.model';
     }
 
     .box-card {
+      color: inherit; text-decoration: none; cursor: pointer;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
