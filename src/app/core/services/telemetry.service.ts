@@ -44,6 +44,12 @@ interface ApiAlert {
 }
 
 const POLL_MS = 4000;
+/** Lecturas por envío que se piden al backend (suficiente para gráficas); evita descargar toda la serie. */
+const HISTORY_LIMIT = 30;
+const ALERTS_LIMIT = 200;
+
+/** Mantiene la referencia anterior si el contenido no cambió, para no volver a renderizar. */
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const time = (iso: string) => new Date(iso).toLocaleTimeString('es-PE', { hour12: false });
 
 const relative = (iso: string | null): string => {
@@ -94,12 +100,27 @@ export class TelemetryService {
   private startPolling() {
     if (this.timer) return;
     this.refresh();
-    this.timer = setInterval(() => this.refresh(), POLL_MS);
+    this.timer = setInterval(() => {
+      if (typeof document === 'undefined' || !document.hidden) this.refresh();
+    }, POLL_MS);
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this.onVisible);
+  }
+
+  /** Al volver a la pestaña se actualiza al instante (en segundo plano no se consulta). */
+  private onVisible = () => {
+    if (!document.hidden && this.timer) this.refresh();
+  };
+  private inFlight = false;
+
+  /** Asigna el signal solo si los datos cambiaron. */
+  private update<T>(sig: { (): T; set(v: T): void }, next: T) {
+    if (!same(sig(), next)) sig.set(next);
   }
 
   private stopPolling() {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisible);
     this.shipmentsSignal.set([]);
     this.smartBoxesSignal.set([]);
     this.alertsSignal.set([]);
@@ -114,11 +135,21 @@ export class TelemetryService {
   }
 
   async refresh() {
+    if (this.inFlight) return; // no solapar consultas si el backend responde lento
+    this.inFlight = true;
+    try {
+      await this.load();
+    } finally {
+      this.inFlight = false;
+    }
+  }
+
+  private async load() {
     const get = <T>(url: string) => firstValueFrom(this.http.get<T>(url));
     const [ships, boxes, telAlerts, secAlerts, boxAlerts] = await Promise.all([
       this.safe(get<ApiShipment[]>(`${API.orders}/shipments`), [] as ApiShipment[]),
       this.safe(get<ApiBox[]>(`${API.containers}/smartboxes`), [] as ApiBox[]),
-      this.safe(get<ApiAlert[]>(`${API.telemetry}/alerts`), [] as ApiAlert[]),
+      this.safe(get<ApiAlert[]>(`${API.telemetry}/alerts?limit=${ALERTS_LIMIT}`), [] as ApiAlert[]),
       this.safe(get<ApiAlert[]>(`${API.security}/alerts`), [] as ApiAlert[]),
       this.safe(get<ApiAlert[]>(`${API.containers}/alerts`), [] as ApiAlert[])
     ]);
@@ -127,11 +158,11 @@ export class TelemetryService {
       this.errorSignal.set('No se pudo conectar con el backend. Verifica que el API Gateway esté en ejecución.');
       return;
     }
-    this.errorSignal.set(null);
+    if (this.errorSignal() !== null) this.errorSignal.set(null);
 
     // SmartBoxes
     const active = ships.data.filter(s => s.status === 'IN_TRANSIT');
-    this.smartBoxesSignal.set(
+    this.update(this.smartBoxesSignal,
       boxes.data.map(b => {
         const assigned = active.find(s => s.smartBoxId === b.boxId);
         return {
@@ -175,7 +206,7 @@ export class TelemetryService {
         rank[x.alert.severity] - rank[y.alert.severity] ||
         y.at - x.at
     );
-    this.alertsSignal.set(merged.map(m => m.alert));
+    this.update(this.alertsSignal, merged.map(m => m.alert).slice(0, ALERTS_LIMIT));
 
     // Detalle por envío: serie térmica y estado del cerrojo
     const details = await Promise.all(
@@ -183,7 +214,7 @@ export class TelemetryService {
         .filter(s => s.status !== 'DELIVERED')
         .map(async s => {
           const [hist, lock] = await Promise.all([
-            this.safe(get<ApiReading[]>(`${API.telemetry}/shipments/${s.shipmentId}/history`), [] as ApiReading[]),
+            this.safe(get<ApiReading[]>(`${API.telemetry}/shipments/${s.shipmentId}/history?limit=${HISTORY_LIMIT}`), [] as ApiReading[]),
             this.safe(get<{ lockState: 'LOCKED' | 'UNLOCKED' }>(`${API.security}/locks/${s.smartBoxId}`), { lockState: 'LOCKED' as const })
           ]);
           return { s, readings: hist.data, lock: lock.data.lockState };
@@ -191,7 +222,7 @@ export class TelemetryService {
     );
 
     const boxById = new Map(boxes.data.map(b => [b.boxId, b]));
-    this.shipmentsSignal.set(
+    this.update(this.shipmentsSignal,
       details.map(({ s, readings, lock }) => {
         const last = readings[readings.length - 1];
         const temp = last ? last.temperature : null;

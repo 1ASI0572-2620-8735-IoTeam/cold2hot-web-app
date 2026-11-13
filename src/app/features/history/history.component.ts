@@ -45,7 +45,7 @@ import { TelemetryService } from '../../core/services/telemetry.service';
           <span>Pedido</span><span>Temperatura registrada</span><span>Lecturas</span><span>Custodia</span><span>Estado</span><span></span>
         </div>
 
-        <div *ngFor="let r of reports(); let i = index; trackBy: trackReport" class="row" [appReveal]="i">
+        <div *ngFor="let r of page(); let i = index; trackBy: trackReport" class="row" [appReveal]="i">
           <span class="c-id">
             <span class="id"><i class="dot" [class.hot]="r.thermalMode === 'HOT'"></i>#{{ r.shipmentId }}</span>
             <span class="addr">{{ r.customerAddress }}</span>
@@ -64,6 +64,9 @@ import { TelemetryService } from '../../core/services/telemetry.service';
             <app-icon name="download" [size]="17" />
           </button>
         </div>
+        <button *ngIf="reports().length > shown()" type="button" class="more" (click)="shown.set(shown() + PAGE)">
+          Mostrar más ({{ reports().length - shown() }})
+        </button>
       </section>
     </div>
   `,
@@ -82,6 +85,8 @@ import { TelemetryService } from '../../core/services/telemetry.service';
     .list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 22px 12px; }
     h3 { font-size: 17px; font-weight: 600; }
     .btn-xs { height: 34px; padding: 0 14px; font-size: 13px; }
+    .more { display: block; margin: 12px auto 8px; border: 1px solid var(--line); background: var(--white); border-radius: 999px; height: 36px; padding: 0 18px; font: inherit; font-size: 13px; color: var(--ink-2); }
+    .more:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
     .empty { padding: 28px 22px; color: var(--muted); font-size: 14px; }
 
     .rows-head, .row { display: grid; grid-template-columns: minmax(170px, 1.6fr) 1.6fr 0.6fr 0.9fr 0.8fr 40px; gap: 14px; align-items: center; padding: 0 22px; }
@@ -126,6 +131,9 @@ export class HistoryComponent implements OnInit {
   private telemetry = inject(TelemetryService);
 
   reports = signal<AuditReport[]>([]);
+  readonly PAGE = 25;
+  shown = signal(this.PAGE);
+  page = computed(() => this.reports().slice(0, this.shown()));
   delivered = computed(() => this.reports().filter(r => r.status === 'DELIVERED').length);
   withBreaches = computed(() => this.reports().filter(r => !this.ok(r)).length);
   integrity = computed(() => {

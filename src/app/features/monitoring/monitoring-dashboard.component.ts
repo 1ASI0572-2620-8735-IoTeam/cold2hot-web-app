@@ -43,7 +43,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
         <button
           type="button"
           class="row"
-          *ngFor="let s of filteredShipments(); let i = index; trackBy: trackShipment"
+          *ngFor="let s of pageShipments(); let i = index; trackBy: trackShipment"
           [appReveal]="i"
           (click)="selectShipmentForDetail(s)"
           [attr.aria-label]="'Ver detalle de ' + s.id"
@@ -61,6 +61,10 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
           <span class="c-lock"><app-icon [name]="s.lockStatus === 'LOCKED' ? 'lock' : 'unlock'" [size]="15" />{{ s.lockStatus === 'LOCKED' ? 'Cerrado' : 'Abierto' }}</span>
           <span class="c-state" [class.bad]="s.thermalStatus === 'BREACH'">{{ s.currentTemp === null ? 'Sin lectura' : s.thermalStatus === 'BREACH' ? 'Fuera de rango' : 'En rango' }}</span>
           <span class="c-go" aria-hidden="true">↗</span>
+        </button>
+
+        <button *ngIf="filteredShipments().length > shown()" type="button" class="more" (click)="shown.set(shown() + 25)">
+          Mostrar más ({{ filteredShipments().length - shown() }})
         </button>
 
         <p *ngIf="!filteredShipments().length" class="empty">No hay envíos para mostrar.</p>
@@ -241,6 +245,8 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
     .c-state { color: var(--muted); }
     .c-state.bad { color: var(--hot-strong); font-weight: 600; }
     .c-go { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); transition: all .2s ease; }
+    .more { display: block; margin: 12px auto 8px; border: 1px solid var(--line); background: var(--white); border-radius: 999px; height: 36px; padding: 0 18px; font: inherit; font-size: 13px; color: var(--ink-2); }
+    .more:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
     .empty { padding: 28px 22px; color: var(--muted); font-size: 14px; }
 
     @media (max-width: 760px) {
@@ -468,6 +474,9 @@ export class MonitoringDashboardComponent {
     this.selectedId = s ? s.id : null;
   }
   showNewShipmentModal = false;
+
+  shown = signal(25);
+  pageShipments = computed(() => this.filteredShipments().slice(0, this.shown()));
 
   filteredShipments = computed(() => {
     const filter = this.activeFilter();

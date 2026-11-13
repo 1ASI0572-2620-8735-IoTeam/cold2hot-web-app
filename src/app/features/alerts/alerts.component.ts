@@ -68,13 +68,13 @@ const shortDetail = (a: AlertItem): string => {
         <div class="list-head">
           <h3>Alertas</h3>
           <div class="seg" role="tablist" aria-label="Filtrar alertas">
-            <button type="button" role="tab" [class.on]="filter() === 'OPEN'" (click)="filter.set('OPEN')">Abiertas</button>
-            <button type="button" role="tab" [class.on]="filter() === 'CRITICAL'" (click)="filter.set('CRITICAL')">Críticas</button>
-            <button type="button" role="tab" [class.on]="filter() === 'RESOLVED'" (click)="filter.set('RESOLVED')">Atendidas</button>
+            <button type="button" role="tab" [class.on]="filter() === 'OPEN'" (click)="setFilter('OPEN')">Abiertas</button>
+            <button type="button" role="tab" [class.on]="filter() === 'CRITICAL'" (click)="setFilter('CRITICAL')">Críticas</button>
+            <button type="button" role="tab" [class.on]="filter() === 'RESOLVED'" (click)="setFilter('RESOLVED')">Atendidas</button>
           </div>
         </div>
 
-        <div *ngFor="let a of visible(); let i = index; trackBy: trackAlert" class="row" [class.done]="a.resolved" [appReveal]="i">
+        <div *ngFor="let a of page(); let i = index; trackBy: trackAlert" class="row" [class.done]="a.resolved" [appReveal]="i">
           <span class="ico" [class.crit]="a.severity === 'CRITICAL' && !a.resolved">
             <app-icon [name]="icon(a)" [size]="19" />
           </span>
@@ -89,6 +89,10 @@ const shortDetail = (a: AlertItem): string => {
             <span *ngIf="a.resolved" class="ok"><app-icon name="check" [size]="15" /> Atendida</span>
           </span>
         </div>
+
+        <button *ngIf="visible().length > shown()" type="button" class="more" (click)="shown.set(shown() + PAGE)">
+          Mostrar más ({{ visible().length - shown() }})
+        </button>
 
         <div *ngIf="!visible().length" class="empty">
           <app-icon name="shield" [size]="26" />
@@ -140,6 +144,8 @@ const shortDetail = (a: AlertItem): string => {
     .act { justify-self: end; }
     .btn-xs { height: 34px; padding: 0 14px; font-size: 13px; }
     .ok { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .more { display: block; margin: 12px auto 8px; border: 1px solid var(--line); background: var(--white); border-radius: 999px; height: 36px; padding: 0 18px; font: inherit; font-size: 13px; color: var(--ink-2); }
+    .more:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
     .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; color: var(--muted); font-size: 14px; }
 
     @media (max-width: 760px) {
@@ -165,7 +171,13 @@ const shortDetail = (a: AlertItem): string => {
 export class AlertsComponent {
   private telemetryService = inject(TelemetryService);
 
+  readonly PAGE = 25;
   filter = signal<Filter>('OPEN');
+  shown = signal(this.PAGE);
+  setFilter(f: Filter) {
+    this.filter.set(f);
+    this.shown.set(this.PAGE);
+  }
   private all = this.telemetryService.alerts;
   open = computed(() => this.all().filter(a => !a.resolved));
   critical = computed(() => this.open().filter(a => a.severity === 'CRITICAL'));
@@ -174,6 +186,8 @@ export class AlertsComponent {
     const f = this.filter();
     return f === 'OPEN' ? this.open() : f === 'CRITICAL' ? this.critical() : this.resolved();
   });
+
+  page = computed(() => this.visible().slice(0, this.shown()));
 
   title = (a: AlertItem) => TITLES[a.type] ?? a.type;
   icon = (a: AlertItem) => ICONS[a.type] ?? 'alert';

@@ -1,5 +1,5 @@
 import { RevealDirective } from '../../shared/reveal.directive';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -32,7 +32,7 @@ import { SmartBox } from '../../core/models/shipment.model';
       </form>
 
       <div class="boxes-grid">
-        <a *ngFor="let box of smartBoxes(); let i = index; trackBy: trackBox" [appReveal]="i" class="box-card card" [routerLink]="[box.id]">
+        <a *ngFor="let box of page(); let i = index; trackBy: trackBox" [appReveal]="i" class="box-card card" [routerLink]="[box.id]">
           <div class="box-top">
             <div class="box-id-tag font-display">{{ box.id }}</div>
             <span
@@ -75,6 +75,9 @@ import { SmartBox } from '../../core/models/shipment.model';
           </div>
         </a>
       </div>
+      <button *ngIf="smartBoxes().length > shown()" type="button" class="btn btn-secondary more" (click)="shown.set(shown() + 24)">
+        Mostrar más ({{ smartBoxes().length - shown() }})
+      </button>
     </div>
   `,
   styles: [`
@@ -206,6 +209,7 @@ import { SmartBox } from '../../core/models/shipment.model';
       color: var(--ink);
     }
 
+    .more { align-self: center; }
     .register-form {
       display: flex;
       flex-wrap: wrap;
@@ -235,6 +239,8 @@ export class SmartBoxesComponent {
   private telemetryService = inject(TelemetryService);
 
   smartBoxes = this.telemetryService.smartBoxes;
+  shown = signal(24);
+  page = computed(() => this.smartBoxes().slice(0, this.shown()));
 
   t(key: string): string {
     return this.translationService.translate(key);
