@@ -187,7 +187,7 @@ interface NavLink {
     .profile-btn:hover { background: var(--bg-alt); }
     .avatar {
       width: 38px; height: 38px; border-radius: 50%; flex: none;
-      background: linear-gradient(135deg, var(--cold), var(--hot));
+      background: var(--cold-strong);
       color: #fff; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center;
     }
     .profile-meta { display: flex; flex-direction: column; text-align: left; line-height: 1.2; }

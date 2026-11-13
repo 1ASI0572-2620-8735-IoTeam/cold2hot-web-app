@@ -367,7 +367,7 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
 
       &.alert-glow {
         border-color: rgba(239, 68, 68, 0.35);
-        background: linear-gradient(180deg, #FFF7F7, #FFFFFF);
+        background: #FFF7F7;
       }
     }
 

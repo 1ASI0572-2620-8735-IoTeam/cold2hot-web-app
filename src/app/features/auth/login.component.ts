@@ -164,7 +164,7 @@ import { TranslationService } from '../../core/services/translation.service';
         right: -100px;
         width: 350px;
         height: 350px;
-        background: radial-gradient(circle, rgba(255,107,61,0.2) 0%, rgba(14,23,38,0) 70%);
+        background: none;
         pointer-events: none;
       }
 
@@ -383,7 +383,7 @@ import { TranslationService } from '../../core/services/translation.service';
     .login-brand-panel {
       position: relative;
       overflow: hidden;
-      background: linear-gradient(160deg, #EAF8FF 0%, #FFFFFF 55%, #FFF3EC 100%) !important;
+      background: #F2FAFF !important;
       color: var(--ink) !important;
       border-right: 1px solid var(--line);
     }
@@ -392,11 +392,10 @@ import { TranslationService } from '../../core/services/translation.service';
       content: '';
       position: absolute;
       border-radius: 50%;
-      filter: blur(2px);
       pointer-events: none;
     }
-    .login-brand-panel::before { width: 360px; height: 360px; right: -120px; top: -100px; background: radial-gradient(circle, rgba(56,189,248,.22), transparent 70%); }
-    .login-brand-panel::after { width: 420px; height: 420px; left: -160px; bottom: -180px; background: radial-gradient(circle, rgba(253,87,1,.16), transparent 70%); }
+    .login-brand-panel::before { width: 360px; height: 360px; right: -120px; top: -100px; background: rgba(56,189,248,.12); }
+    .login-brand-panel::after { width: 420px; height: 420px; top: auto; right: auto; left: -160px; bottom: -180px; background: rgba(253,87,1,.08); }
     .login-brand-panel > * { position: relative; z-index: 1; }
     .logo-box { display: flex; align-items: center; gap: 12px; }
     .brand-icon { width: 44px; height: 44px; object-fit: contain; }
@@ -405,7 +404,7 @@ import { TranslationService } from '../../core/services/translation.service';
     .w-hot { color: var(--hot); }
     .brand-badge { background: var(--white) !important; color: var(--cold-strong) !important; border: 1px solid rgba(56,189,248,.35); }
     .brand-hero-title { color: var(--ink) !important; font-weight: 700; letter-spacing: -0.03em; }
-    .grad { background: linear-gradient(90deg, var(--cold-strong), var(--hot)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .grad { color: var(--hot); }
     .brand-hero-desc { color: var(--muted) !important; }
     .feature-item { color: var(--ink-2) !important; font-weight: 500; }
     .feature-check { width: 36px !important; height: 36px !important; border-radius: 12px !important; display: inline-flex; align-items: center; justify-content: center; flex: none; }
