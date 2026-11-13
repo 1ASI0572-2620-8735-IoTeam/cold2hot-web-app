@@ -171,16 +171,6 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
             >
               <app-icon name="download" [size]="18" /> Descargar reporte de custodia
             </button>
-            <button
-              type="button"
-              class="btn btn-secondary"
-              style="width: 100%; margin-top: 10px;"
-              (click)="photoInput.click()"
-            >
-              <app-icon name="check" [size]="18" /> Confirmar entrega con foto
-            </button>
-            <input #photoInput type="file" accept="image/*" hidden (change)="onPhoto(selectedShipment, $event)" />
-            <p *ngIf="deliveryError" class="deliver-error">{{ deliveryError }}</p>
           </div>
         </aside>
       </div>
@@ -250,7 +240,6 @@ import { NewShipmentModalComponent } from './new-shipment-modal.component';
     .c-go { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); transition: all .2s ease; }
     .more { display: block; margin: 12px auto 8px; border: 1px solid var(--line); background: var(--white); border-radius: 999px; height: 36px; padding: 0 18px; font: inherit; font-size: 13px; color: var(--ink-2); }
     .more:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
-    .deliver-error { color: var(--danger-strong); font-size: 13px; margin-top: 8px; }
     .empty { padding: 28px 22px; color: var(--muted); font-size: 14px; }
 
     @media (max-width: 760px) {
@@ -530,29 +519,6 @@ export class MonitoringDashboardComponent {
   private async loadOtp() {
     this.otp.set(null);
     if (this.selectedId) this.otp.set(await this.telemetryService.otpFor(this.selectedId));
-  }
-
-  deliveryError = '';
-
-  /** La entrega se confirma subiendo la foto de evidencia (la caja queda disponible). */
-  async onPhoto(shipment: Shipment, ev: Event) {
-    const input = ev.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-    this.deliveryError = '';
-    if (file.size > 3 * 1024 * 1024) {
-      this.deliveryError = 'La foto pesa más de 3 MB.';
-      return;
-    }
-    const data = await new Promise<string>(resolve => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result));
-      r.readAsDataURL(file);
-    });
-    const res = await this.telemetryService.completeShipment(shipment.id, data);
-    if (res.ok) this.selectedShipment = null;
-    else this.deliveryError = res.error || 'No se pudo confirmar la entrega.';
   }
 
   selectShipmentForDetail(shipment: Shipment) {
